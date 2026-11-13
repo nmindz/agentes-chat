@@ -4,7 +4,7 @@ import { and, type Database, eq, isNull, schema } from "@agenteschat/db";
 import { sniffImage, stripImageMetadata } from "../avatars";
 import { caches } from "../cache";
 import { NotFoundError } from "../errors";
-import { assertPublicHttpsUrl, outboundFetch, type ResolveHost } from "../net-guard";
+import { assertMcpServerUrl, mcpFetch, privateMcpAllowed, type ResolveHost } from "../net-guard";
 import { requirePermission } from "../organizations";
 import type { ConnectorConnection } from "./connections";
 
@@ -80,7 +80,9 @@ export function iconCandidates(serverUrl: string, icons: unknown): McpIcon[] {
     if (icon.src.startsWith("data:")) return /^data:image\/(png|jpe?g|webp);base64,/i.test(icon.src);
     try {
       const u = new URL(icon.src);
-      return u.protocol === "https:" && u.origin === origin && !/\.svgz?$/i.test(u.pathname);
+      const scheme = u.protocol === "https:" || (privateMcpAllowed() && u.protocol === "http:");
+      // `stdio:` servers have no origin to read one from (they send theirs inline, as a `data:` URI).
+      return scheme && origin !== "null" && u.origin === origin && !/\.svgz?$/i.test(u.pathname);
     } catch {
       return false;
     }
@@ -109,8 +111,8 @@ async function iconBytes(deps: ServerIconDeps, icon: McpIcon): Promise<Uint8Arra
     return new Uint8Array(Buffer.from(data, "base64"));
   }
   try {
-    const url = await assertPublicHttpsUrl(icon.src, deps.resolveHost);
-    const res = await (deps.http ?? outboundFetch({ resolveHost: deps.resolveHost }))(url.toString(), {
+    const url = await assertMcpServerUrl(icon.src, deps.resolveHost);
+    const res = await (deps.http ?? mcpFetch({ resolveHost: deps.resolveHost }))(url.toString(), {
       headers: { accept: "image/png, image/jpeg, image/webp" },
       credentials: "omit",
       redirect: "error",

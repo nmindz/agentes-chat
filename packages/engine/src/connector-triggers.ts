@@ -2,7 +2,7 @@ import { parseAddressList } from "@agenteschat/adapters";
 import { and, type Database, eq, isNull, schema } from "@agenteschat/db";
 import { type ConnectorDeps, connectionHeaders, noteRefusedSignIn } from "./connectors/connections";
 import { customScope } from "./connectors/custom";
-import { connectOverHttp, type McpConnect, type McpSession } from "./connectors/mcp";
+import { connectMcp, type McpConnect, type McpSession } from "./connectors/mcp";
 import { presetForServer } from "./connectors/presets";
 import { ValidationError } from "./errors";
 import { isEmailAddress, matchesAddressRules, normalizeAddressRule } from "./mail/text";
@@ -223,7 +223,7 @@ async function withSession<T>(deps: ConnectorTriggerDeps, connectionId: string, 
     .where(and(eq(connectorConnections.id, connectionId), isNull(connectorConnections.revokedAt)));
   if (!connection) throw new Error("connection_gone");
   try {
-    const session = await (deps.connect ?? connectOverHttp)(connection, await connectionHeaders(deps, connection));
+    const session = await (deps.connect ?? connectMcp)(connection, await connectionHeaders(deps, connection));
     try {
       return await run(session);
     } finally {

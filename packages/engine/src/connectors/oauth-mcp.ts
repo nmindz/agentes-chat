@@ -2,7 +2,7 @@ import { and, type Database, eq, isNull, schema } from "@agenteschat/db";
 import { openSecret, sealSecret } from "../crypto";
 import { ValidationError } from "../errors";
 import { oneLine } from "../mail/text";
-import { assertPublicHttpsUrl, outboundFetch, type ResolveHost } from "../net-guard";
+import { assertMcpServerUrl, assertPublicHttpsUrl, mcpFetch, privateMcpAllowed, type ResolveHost } from "../net-guard";
 import type { ConnectorDeps } from "./connections";
 
 const { oauthClients, connectorConnections } = schema;
@@ -40,12 +40,29 @@ export interface AuthServerMetadata {
 const AUTH_METHODS: readonly string[] = ["none", "client_secret_post", "client_secret_basic"];
 
 /** Every address here is one a server's own answers named: checked and pinned as each request connects. */
-const http = (deps: McpOAuthDeps) => deps.http ?? outboundFetch({ resolveHost: deps.resolveHost });
+const http = (deps: McpOAuthDeps) => deps.http ?? mcpFetch({ resolveHost: deps.resolveHost });
 /** The pinned fetch has no time limit of its own: a server that never answers ends the discovery here. */
 const waitMs = () => AbortSignal.timeout(15_000);
 
-async function getJson(deps: McpOAuthDeps, url: string): Promise<Record<string, unknown> | null> {
-  await assertPublicHttpsUrl(url, deps.resolveHost);
+/**
+ * Checks an address a server's answer named. A server on this server's own network (`MCP_PRIVATE_SERVERS`) may keep its
+ * sign-in on its own hostname; anything else it points at must still be a public https address, whatever the switch,
+ * so a public server (or a private one's compromised answer) can't send the sign-in to this server's network.
+ */
+async function assertEndpoint(deps: McpOAuthDeps, serverUrl: string, url: string) {
+  const sameHost = () => {
+    try {
+      return new URL(url).hostname.toLowerCase() === new URL(serverUrl).hostname.toLowerCase();
+    } catch {
+      return false;
+    }
+  };
+  if (!privateMcpAllowed() || !sameHost()) return assertPublicHttpsUrl(url, deps.resolveHost);
+  return assertMcpServerUrl(url, deps.resolveHost);
+}
+
+async function getJson(deps: McpOAuthDeps, url: string, serverUrl?: string): Promise<Record<string, unknown> | null> {
+  await (serverUrl ? assertEndpoint(deps, serverUrl, url) : assertPublicHttpsUrl(url, deps.resolveHost));
   try {
     const res = await http(deps)(url, {
       headers: { accept: "application/json" },
@@ -84,7 +101,7 @@ export async function probeMcpServer(
   serverUrl: string,
   headers: Record<string, string> = {},
 ): Promise<ServerProbe> {
-  await assertPublicHttpsUrl(serverUrl, deps.resolveHost);
+  await assertMcpServerUrl(serverUrl, deps.resolveHost);
   let res: Response;
   try {
     res = await http(deps)(serverUrl, {
@@ -113,13 +130,13 @@ export async function probeMcpServer(
   const root = `${base.origin}/.well-known/oauth-protected-resource`;
   const candidates = [...(fromHeader ? [fromHeader] : []), `${root}${path}`, root];
   for (const url of candidates) {
-    const meta = await getJson(deps, url).catch(() => null);
+    const meta = await getJson(deps, url, serverUrl).catch(() => null);
     const servers = meta?.authorization_servers;
     if (Array.isArray(servers) && typeof servers[0] === "string") {
       let scopes = scopesOf(meta);
       // Square lists its scopes only at the root, and refuses an authorization that asks for none.
       if (scopes.length === 0 && url !== root) {
-        const top = await getJson(deps, root).catch(() => null);
+        const top = await getJson(deps, root, serverUrl).catch(() => null);
         if (Array.isArray(top?.authorization_servers) && top.authorization_servers[0] === servers[0]) {
           scopes = scopesOf(top);
         }
@@ -131,7 +148,7 @@ export async function probeMcpServer(
   // No protected-resource metadata (older servers, e.g. Atlassian or Zapier): the MCP spec's fallback
   // is an authorization server at the server's own origin.
   if (/^bearer\b/i.test(header)) {
-    const meta = await authServerMetadata(deps, base.origin).catch(() => null);
+    const meta = await authServerMetadata(deps, base.origin, serverUrl).catch(() => null);
     if (meta?.registration_endpoint) {
       return { kind: "oauth", resource: canonicalResource(serverUrl), issuer: base.origin, scopes: [] };
     }
@@ -140,7 +157,12 @@ export async function probeMcpServer(
 }
 
 /** Authorization server metadata: RFC 8414 (with path insertion), then OpenID discovery. */
-export async function authServerMetadata(deps: McpOAuthDeps, issuer: string): Promise<AuthServerMetadata | null> {
+export async function authServerMetadata(
+  deps: McpOAuthDeps,
+  issuer: string,
+  /** The MCP server whose sign-in this is: its own hostname may be private where the operator allowed it. */
+  serverUrl?: string,
+): Promise<AuthServerMetadata | null> {
   const u = new URL(issuer);
   const path = u.pathname.replace(/\/$/, "");
   const candidates = [
@@ -150,10 +172,13 @@ export async function authServerMetadata(deps: McpOAuthDeps, issuer: string): Pr
     `${u.origin}/.well-known/oauth-authorization-server`,
   ];
   for (const url of candidates) {
-    const meta = await getJson(deps, url).catch(() => null);
+    const meta = await getJson(deps, url, serverUrl).catch(() => null);
     if (meta && typeof meta.authorization_endpoint === "string" && typeof meta.token_endpoint === "string") {
-      await assertPublicHttpsUrl(meta.authorization_endpoint, deps.resolveHost);
-      await assertPublicHttpsUrl(meta.token_endpoint, deps.resolveHost);
+      for (const endpoint of [meta.authorization_endpoint, meta.token_endpoint]) {
+        await (serverUrl
+          ? assertEndpoint(deps, serverUrl, endpoint)
+          : assertPublicHttpsUrl(endpoint, deps.resolveHost));
+      }
       return meta as unknown as AuthServerMetadata;
     }
   }
@@ -213,7 +238,7 @@ export async function ensureOAuthClient(
   orgId: string,
   issuer: string,
   meta: AuthServerMetadata,
-  input: { redirectUri: string; scope: string | null },
+  input: { redirectUri: string; scope: string | null; serverUrl?: string },
 ): Promise<OAuthClientRow | NotApproved | null> {
   const [existing] = await deps.db
     .select()
@@ -231,7 +256,9 @@ export async function ensureOAuthClient(
   if (methods && !methods.includes("S256")) return null;
   const endpoint = meta.registration_endpoint;
   if (!endpoint) return { notApproved: true };
-  await assertPublicHttpsUrl(endpoint, deps.resolveHost);
+  await (input.serverUrl
+    ? assertEndpoint(deps, input.serverUrl, endpoint)
+    : assertPublicHttpsUrl(endpoint, deps.resolveHost));
   const { scope } = input;
   // A public client with PKCE where it takes one (or doesn't say), else one with the secret it gives us.
   const supported = meta.token_endpoint_auth_methods_supported;

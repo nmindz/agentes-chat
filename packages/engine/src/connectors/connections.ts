@@ -7,7 +7,7 @@ import { caches } from "../cache";
 import { openSecret, randomToken, sealSecret, sha256 } from "../crypto";
 import { ConflictError, ForbiddenError, MisconfiguredError, NotFoundError, ValidationError } from "../errors";
 import { forgetInstallationTokens } from "../git/github-app";
-import { outboundFetch, type ResolveHost } from "../net-guard";
+import { mcpFetch, type ResolveHost } from "../net-guard";
 import { requireChangePermission, requirePermission } from "../organizations";
 import { CONNECTOR_ALL } from "../tools/scopes";
 import { CONNECTOR_CATALOG, type ConnectorDefinition } from "./catalog";
@@ -684,9 +684,10 @@ export const clientRefused = (error: unknown) => error === "invalid_client" || e
 /**
  * The fetch for a token endpoint an authorization server's metadata named (MCP OAuth), where a built-in connector's
  * fixed one goes straight: checked and pinned at every exchange and refresh, and a redirect is never followed, so
- * the form (the code, the refresh token, the client's secret) only goes to a public address.
+ * the form (the code, the refresh token, the client's secret) only goes to a public address (an address on this
+ * server's own network where the operator allows private MCP servers).
  */
-const namedTokenFetch = (deps: ConnectorDeps) => deps.http ?? outboundFetch({ resolveHost: deps.resolveHost });
+const namedTokenFetch = (deps: ConnectorDeps) => deps.http ?? mcpFetch({ resolveHost: deps.resolveHost });
 
 /** `ownApp`: the connector, when the client is this server's own OAuth app for it (`oauthApps`). */
 async function tokenRequest(

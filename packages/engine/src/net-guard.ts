@@ -373,6 +373,50 @@ export function publicHttpsFetch(
   return guarded as typeof fetch;
 }
 
+let privateMcpServers = false;
+
+/**
+ * Lets custom MCP servers be on this server's own network and over plain http (`MCP_PRIVATE_SERVERS`). Off unless the
+ * operator turns it on: a workspace's admins then reach a server next to this one, a local or loopback one included,
+ * and its OAuth discovery too. Its tools still ask for approval as any other server's.
+ */
+export function allowPrivateMcpServers(on = true) {
+  privateMcpServers = on;
+}
+
+export const privateMcpAllowed = () => privateMcpServers;
+
+/**
+ * Checks an MCP server's address. Unless the operator allows private ones, `assertPublicHttpsUrl`'s rule (public
+ * https only). With it, http as well, and any address this computer can reach, since the operator said workspaces may.
+ * A `stdio://<name>` address is the operator's own list, never fetched: it passes as it is.
+ */
+export async function assertMcpServerUrl(raw: string, resolve: ResolveHost = resolveHostDns): Promise<URL> {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new ValidationError("Invalid address", "url.invalid");
+  }
+  if (url.protocol === "stdio:") {
+    if (!url.hostname) throw new ValidationError("Invalid address", "url.invalid");
+    return url;
+  }
+  if (!privateMcpServers) return assertPublicHttpsUrl(raw, resolve);
+  if (url.protocol !== "https:" && url.protocol !== "http:")
+    throw new ValidationError("Use an http:// or https:// address", "url.https_required");
+  if (url.username || url.password)
+    throw new ValidationError("The address can't have a user or password", "url.credentials");
+  // DNS is left to the request: the operator allowed this workspaces' servers to reach its own network.
+  if (!url.hostname) throw new ValidationError("Invalid address", "url.invalid");
+  return url;
+}
+
+/** What an MCP server's requests go through: `outboundFetch`, or plain `fetch` where private servers are allowed. */
+export function mcpFetch(options: { resolveHost?: ResolveHost; ownRedirects?: boolean } = {}): typeof fetch {
+  return privateMcpServers ? fetch : outboundFetch(options);
+}
+
 let privateOutbound = false;
 
 /**

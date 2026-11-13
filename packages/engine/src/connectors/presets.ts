@@ -1295,9 +1295,13 @@ export function composioAction(way: ComposioWay, name: string): string | null {
 
 /**
  * A server's address without what may be its secret: a path or a query can be the only credential of a server that
- * asks for no sign-in. An address the catalog publishes (a preset's, a Composio toolkit's) stays whole.
+ * asks for no sign-in. An address the catalog publishes (a preset's, a Composio toolkit's) stays whole, and so does a
+ * local server's (`stdio://<name>`), which names nothing secret.
  */
 export const serverUrlShown = (serverUrl: string) =>
-  presetForServer(serverUrl) || composioToolkitOf(serverUrl) || !URL.canParse(serverUrl)
+  presetForServer(serverUrl) ||
+  composioToolkitOf(serverUrl) ||
+  serverUrl.toLowerCase().startsWith("stdio:") ||
+  !URL.canParse(serverUrl)
     ? serverUrl
     : new URL(serverUrl).origin;

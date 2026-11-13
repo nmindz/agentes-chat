@@ -8,7 +8,7 @@ import { randomToken, sealSecret, sha256 } from "../crypto";
 import { ConflictError, isUniqueViolation, NotFoundError, ValidationError } from "../errors";
 import type { Judge } from "../judge";
 import { oneLine } from "../mail/text";
-import { assertPublicHttpsUrl } from "../net-guard";
+import { assertMcpServerUrl } from "../net-guard";
 import { can, requirePermission } from "../organizations";
 import { isAgentesCloud } from "../telemetry";
 import {
@@ -64,6 +64,7 @@ import {
 } from "./presets";
 import { checkRequestHeaders, type RequestHeader } from "./request-headers";
 import { type McpServerInfo, refreshServerIcon } from "./server-icon";
+import { stdioNameOf, stdioServerFor, stdioUrl } from "./stdio";
 
 const { connectorConnections, customTools, oauthStates, agentScopes, agents } = schema;
 
@@ -804,14 +805,19 @@ export async function connectCustomServer(
     if (input.headers?.length) throw signInOnly();
     return beginComposioConnect(deps, actorId, orgId, input);
   }
-  const url = await assertPublicHttpsUrl(input.serverUrl.trim(), deps.resolveHost);
+  // A `stdio://<name>` server is the operator's own list: never fetched, and it has no sign-in to discover.
+  const stdio = stdioNameOf(input.serverUrl.trim());
+  const spec = stdio ? stdioServerFor(orgId, stdioUrl(stdio)) : null;
+  if (stdio && !spec) throw new ValidationError("This local MCP server isn't offered here", "connector.stdio_unknown");
+  const url = await assertMcpServerUrl(input.serverUrl.trim(), deps.resolveHost);
   // Composio's address spelled another way is still Composio's: nothing is sent or kept there.
   if (composioToolkitTyped(url)) throw signInOnly();
+  const typedUrl = stdio ? stdioUrl(stdio) : url.toString();
   // Checked before anyone signs in for nothing.
-  const target = input.connectionId ? await reconnectTarget(deps.db, orgId, input.connectionId, url.toString()) : null;
+  const target = input.connectionId ? await reconnectTarget(deps.db, orgId, input.connectionId, typedUrl) : null;
   // Reconectar asks at the account's own address, however it was typed again: what it keeps goes nowhere else.
-  const serverUrl = target?.serverUrl ?? url.toString();
-  const label = input.label?.trim() || presetForServer(serverUrl)?.label || url.hostname;
+  const serverUrl = target?.serverUrl ?? typedUrl;
+  const label = input.label?.trim() || spec?.label || presetForServer(serverUrl)?.label || url.hostname;
   const apiKey = input.apiKey?.trim();
   // The account's own secret is opened only to carry its headers over; a list in the request replaces them unread.
   const saved = !input.headers && target?.headerNames?.length ? await savedHeaders(deps, target) : {};
@@ -836,11 +842,16 @@ export async function connectCustomServer(
     };
   };
   if (apiKey && apiKey.length < 8) throw new ValidationError("The key looks too short", "connector.key_too_short");
+  if (stdio && (apiKey || headers)) {
+    throw new ValidationError("A local MCP server takes its sign-in from its own settings", "connector.stdio_no_key");
+  }
   // The vendor's terms forbid asking for a token: on the Cloud it signs in only (ADR 0107).
   if ((apiKey || headers) && presetForServer(serverUrl)?.cloudOAuthOnly && isAgentesCloud(deps.publicUrl)) {
     throw signInOnly();
   }
   if (apiKey) return stored("api_key", { apiKey, ...(headers ? { headers } : {}) });
+  // A local server is the operator's own process: no sign-in to discover, and it is reached the same way.
+  if (stdio) return stored("none", null);
   const probe = await probeMcpServer(deps, serverUrl, secretHeaders({ headers }, serverUrl));
   // Headers a person typed are a secret of theirs, as a key is.
   if (probe.kind === "open") return headers ? stored("api_key", { headers }) : stored("none", null);
@@ -886,13 +897,17 @@ export async function beginMcpOAuth(
     connectionId?: string;
   },
 ): Promise<Exclude<CustomConnectStart, { status: "connected" }>> {
-  const meta = await authServerMetadata(deps, input.issuer);
+  const meta = await authServerMetadata(deps, input.issuer, input.serverUrl);
   if (!meta) return { status: "needs_key" };
   const redirectUri = oauthRedirectUri(deps.publicUrl);
   // Worked out again each time: a client still in use keeps the scope it was registered with, maybe without
   // offline_access.
   const scope = oauthScope(meta, input.scopes);
-  const client = await ensureOAuthClient(deps, orgId, input.issuer, meta, { redirectUri, scope });
+  const client = await ensureOAuthClient(deps, orgId, input.issuer, meta, {
+    redirectUri,
+    scope,
+    serverUrl: input.serverUrl,
+  });
   if (client && "notApproved" in client) {
     return { status: "needs_key", reason: "not_approved", ...(client.detail ? { detail: client.detail } : {}) };
   }

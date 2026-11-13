@@ -1,8 +1,6 @@
 import { type ComposioClient, composioFile, FileTooLargeError } from "@agenteschat/adapters";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type { FetchLike, Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import type { jsonSchemaValidator } from "@modelcontextprotocol/sdk/validation/types.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { StreamableHTTPClientTransport, StreamableHTTPError } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { ARTIFACT_LIMITS, type ArtifactDeps, createFileArtifact, fileReach } from "../artifacts";
 import { recordAudit } from "../audit";
 import { runAuthorityById } from "../authority";
@@ -13,7 +11,7 @@ import { type GitHubAppAccess, githubCallAuth, githubListingHeaders } from "../g
 import { githubItemOfCall, recordGitHubItem } from "../git/github-events";
 import { creditedMessage, runCoAuthors, signatureLine, signedBody } from "../git/signature";
 import type { Judge } from "../judge";
-import { assertPublicHttpsUrl, outboundFetch, type ResolveHost } from "../net-guard";
+import { assertPublicHttpsUrl, mcpFetch, type ResolveHost } from "../net-guard";
 import { replyThreadOf } from "../runs";
 import { maskValues } from "../tool-detail";
 import { MAX_RESULT_CHARS } from "../tools/gateway";
@@ -40,41 +38,19 @@ import {
   syncCustomTools,
   type ToolAccess,
 } from "./custom";
+import { tolerantMcpFetch } from "./mcp-fetch";
+import { type McpCallResult, type McpSession, type McpTool, mcpSessionOver } from "./mcp-session";
 import { applyToolPins } from "./pins";
 import { presetForServer } from "./presets";
-import type { McpServerInfo } from "./server-icon";
+import { connectAny } from "./stdio";
 
-/** A tool as an MCP server lists it. */
-export interface McpTool {
-  name: string;
-  description?: string;
-  inputSchema: Record<string, unknown>;
-  /** The server's `readOnlyHint` annotation, when it sends one. */
-  readOnlyHint?: boolean | null;
-  /** The server's `destructiveHint` annotation, when it sends one. */
-  destructiveHint?: boolean | null;
-}
-
-export interface McpCallResult {
-  content: string;
-  isError: boolean;
-  /** A Composio action's answer as Composio gave it (files and all), for `keepComposioFiles`. */
-  data?: unknown;
-}
-
-/** An open MCP client session. Only the connector tool source uses it, behind the Tool Gateway. */
-export interface McpSession {
-  listTools(): Promise<McpTool[]>;
-  /** `meta`: what the request carries in `params._meta`, beside the tool's arguments. */
-  callTool(name: string, args: Record<string, unknown>, meta?: Record<string, unknown>): Promise<McpCallResult>;
-  /** Who the server said it is in `initialize` (name, title, icons); null when it said nothing. */
-  serverInfo?(): McpServerInfo | null;
-  close(): Promise<void>;
-}
+export { jsonRpcMembers, tolerantMcpFetch } from "./mcp-fetch";
+export { type McpCallResult, type McpSession, type McpTool, mcpSessionOver } from "./mcp-session";
 
 /**
- * Opens a session to a connection's server (or one not stored yet). Default: streamable HTTP; tests: in-process. A
- * service through Composio is opened by its workspace and Composio account (`withComposio`).
+ * Opens a session to a connection's server (or one not stored yet). Default: streamable HTTP, or the SSE one where
+ * the server speaks only that; tests: in-process. A `stdio:` connection is the operator's own process (`connectAny`),
+ * and a service through Composio is opened by its workspace and Composio account (`withComposio`).
  */
 export type McpConnect = (
   connection: Pick<ConnectorConnection, "serverUrl"> &
@@ -83,71 +59,20 @@ export type McpConnect = (
 ) => Promise<McpSession>;
 
 /**
- * Every tool result passes. The SDK's default compiles each listed tool's `outputSchema` with a new Ajv for every
- * client, so for every listing, on the main thread: a second or more and tens of MB for a server with large schemas.
- * Nothing here checks a result against its schema; it reaches the model as untrusted text either way.
- */
-const NO_OUTPUT_VALIDATION: jsonSchemaValidator = {
-  getValidator: () => (input) => ({ valid: true, data: input as never, errorMessage: undefined }),
-};
-
-/** Wraps an official MCP SDK client over any transport. */
-export async function mcpSessionOver(transport: Transport): Promise<McpSession> {
-  const client = new Client({ name: "agentes.chat", version: "1" }, { jsonSchemaValidator: NO_OUTPUT_VALIDATION });
-  await client.connect(transport);
-  return {
-    async listTools() {
-      const tools: McpTool[] = [];
-      let cursor: string | undefined;
-      for (let page = 0; page < 20; page++) {
-        const res = await client.listTools(cursor ? { cursor } : undefined);
-        for (const t of res.tools) {
-          tools.push({
-            name: t.name,
-            description: t.description,
-            inputSchema: t.inputSchema as Record<string, unknown>,
-            readOnlyHint: (t.annotations as { readOnlyHint?: boolean } | undefined)?.readOnlyHint ?? null,
-            destructiveHint: (t.annotations as { destructiveHint?: boolean } | undefined)?.destructiveHint ?? null,
-          });
-        }
-        cursor = res.nextCursor;
-        if (!cursor) break;
-      }
-      return tools;
-    },
-    async callTool(name, args, meta) {
-      const res = (await client.callTool({ name, arguments: args, ...(meta ? { _meta: meta } : {}) })) as {
-        content?: { type: string; text?: string; resource?: { text?: unknown } }[];
-        isError?: boolean;
-        structuredContent?: unknown;
-      };
-      // GitHub's `get_file_contents` sends the file itself as an embedded resource next to a one-line text block.
-      const parts = (res.content ?? []).map((c) =>
-        c.type === "text"
-          ? (c.text ?? "")
-          : c.type === "resource" && typeof c.resource?.text === "string"
-            ? c.resource.text
-            : `[${c.type}]`,
-      );
-      if (parts.length === 0 && res.structuredContent !== undefined) parts.push(JSON.stringify(res.structuredContent));
-      return { content: parts.join("\n"), isError: res.isError === true };
-    },
-    serverInfo: () => (client.getServerVersion() as McpServerInfo | undefined) ?? null,
-    close: () => client.close(),
-  };
-}
-
-/**
  * The shortest header value masked in what a server says back. A shorter one is a setting (`1`, `v2`), not a key, and
  * masked wherever it shows it would take "HTTP 401" with it. A key is never shorter (`connector.key_too_short`).
  */
 const MASKED_FROM = 8;
 
 /**
- * A session over streamable HTTP whose failures hold none of the header values it was opened with: a server may repeat
- * what it was sent in its refusal, and that text goes to the log, the connection's last error and the agent. The
- * error thrown is the server's own (its class and code are read), with its words changed. A tool's answer flagged as
- * an error is a refusal in the server's words too; any other answer is left as it came.
+ * A connection's session over HTTP: Streamable HTTP, and where the server answers its `POST` with 404 or 405 (one
+ * that only speaks the older SSE transport), the SSE transport. Any other failure (a refusal, a redirect off its
+ * origin) is the modern one's, and nothing more is sent.
+ *
+ * Its failures hold none of the header values it was opened with: a server may repeat what it was sent in its
+ * refusal, and that text goes to the log, the connection's last error and the agent. The error thrown is the server's
+ * own (its class and code are read), with its words changed. A tool's answer flagged as an error is a refusal in the
+ * server's words too; any other answer is left as it came.
  */
 export const connectOverHttp: McpConnect = async (connection, headers) => {
   const secrets = Object.entries(headers)
@@ -174,14 +99,23 @@ export const connectOverHttp: McpConnect = async (connection, headers) => {
       }
       throw error;
     });
-  const session = await masked(
-    mcpSessionOver(
-      new StreamableHTTPClientTransport(new URL(connection.serverUrl), {
-        requestInit: { headers },
-        fetch: tolerantMcpFetch(outboundFetch({ ownRedirects: true })),
-      }),
-    ),
-  );
+  const url = new URL(connection.serverUrl);
+  const fetch = tolerantMcpFetch(mcpFetch({ ownRedirects: true }));
+  const open = async () => {
+    try {
+      return await mcpSessionOver(new StreamableHTTPClientTransport(url, { requestInit: { headers }, fetch }));
+    } catch (streamable) {
+      if (!(streamable instanceof StreamableHTTPError) || (streamable.code !== 404 && streamable.code !== 405)) {
+        throw streamable;
+      }
+      try {
+        return await mcpSessionOver(new SSEClientTransport(url, { requestInit: { headers }, fetch }));
+      } catch {
+        throw streamable;
+      }
+    }
+  };
+  const session = await masked(open());
   return {
     ...session,
     listTools: () => masked(session.listTools()),
@@ -192,92 +126,8 @@ export const connectOverHttp: McpConnect = async (connection, headers) => {
   };
 };
 
-const JSONRPC_MEMBERS = ["jsonrpc", "id", "method", "params", "result", "error"];
-
-/** A JSON-RPC message (or batch) with only the members JSON-RPC defines; anything else is returned as it is. */
-export function jsonRpcMembers(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(jsonRpcMembers);
-  if (!isRecord(value) || !("jsonrpc" in value)) return value;
-  return Object.fromEntries(JSONRPC_MEMBERS.filter((k) => k in value).map((k) => [k, value[k]]));
-}
-
-/** The JSON text normalized by `jsonRpcMembers`; null when it isn't JSON. */
-function jsonRpcText(text: string): string | null {
-  try {
-    return JSON.stringify(jsonRpcMembers(JSON.parse(text)));
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Rewrites each SSE event whose data is JSON as one `data:` line; every other line passes as it came. An event's data
- * may span several `data:` lines (joined with \n) and lines may end in \r\n, \r or \n, as SSE allows.
- */
-function sseJsonRpcEvents(): TransformStream<string, string> {
-  let rest = "";
-  let data: string[] = [];
-  let raw: string[] = [];
-  const line = (l: string, out: TransformStreamDefaultController<string>) => {
-    if (l.startsWith("data:")) {
-      data.push(l.slice(l.startsWith("data: ") ? 6 : 5));
-      raw.push(l);
-      return;
-    }
-    if (l === "") {
-      const json = data.length > 0 ? jsonRpcText(data.join("\n")) : null;
-      for (const r of json === null ? raw : [`data: ${json}`]) out.enqueue(`${r}\n`);
-      data = [];
-      raw = [];
-    }
-    out.enqueue(`${l}\n`);
-  };
-  return new TransformStream({
-    transform(chunk, out) {
-      const text = rest + chunk;
-      // A trailing \r may be the first half of \r\n: wait for the next chunk to tell.
-      const cut = text.endsWith("\r") ? text.length - 1 : text.length;
-      const lines = text.slice(0, cut).split(/\r\n|\r|\n/);
-      rest = (lines.pop() ?? "") + text.slice(cut);
-      for (const l of lines) line(l, out);
-    },
-    flush(out) {
-      if (rest.endsWith("\r")) line(rest.slice(0, -1), out);
-      else if (rest) raw.push(rest);
-      for (const r of raw) out.enqueue(`${r}\n`);
-    },
-  });
-}
-
-/**
- * A fetch for the MCP transport that drops members JSON-RPC doesn't define from the server's messages before the SDK
- * reads them: the SDK refuses a whole response for one extra top-level member (some servers add their own, like a
- * `fonte` beside `result`), where other MCP clients ignore it. `result` and `error` pass untouched, so their shapes are
- * still checked; redirects and failed responses pass as they came.
- */
-export function tolerantMcpFetch(base: FetchLike = fetch): FetchLike {
-  return async (url, init) => {
-    const res = await base(url, init);
-    if (!res.ok || !res.body) return res;
-    const type = res.headers.get("content-type") ?? "";
-    let body: string | ReadableStream<Uint8Array>;
-    if (type.includes("application/json")) {
-      const text = await res.text();
-      body = jsonRpcText(text) ?? text;
-    } else if (type.includes("text/event-stream")) {
-      body = res.body
-        .pipeThrough(new TextDecoderStream())
-        .pipeThrough(sseJsonRpcEvents())
-        .pipeThrough(new TextEncoderStream());
-    } else {
-      return res;
-    }
-    const headers = new Headers(res.headers);
-    headers.delete("content-length");
-    headers.delete("content-encoding");
-    return new Response(body, { status: res.status, statusText: res.statusText, headers });
-  };
-}
+/** Any connection's session: a local server this one runs (`stdio://`), or an http(s) one. */
+export const connectMcp: McpConnect = connectAny(connectOverHttp);
 
 /** Name the model sees for a connector tool: `github_merge_pull_request`. */
 export const exposedToolName = (connector: string, tool: string) =>
@@ -314,7 +164,8 @@ export function createConnectorToolSource(
     callerIdentity?: ReadonlyMap<string, string>;
   },
 ): ToolSource {
-  const connect = deps.connect ?? connectOverHttp;
+  // A `stdio:` connection is the operator's own server, kept open between calls (`connectMcp`).
+  const connect = deps.connect ?? connectMcp;
   const cache = new Map<string, { at: number; tools: McpTool[] }>();
   /** How many times a listing found changed tools and worked out a custom server's levels again. */
   let reclassified = 0;
