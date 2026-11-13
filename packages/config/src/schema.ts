@@ -454,7 +454,19 @@ export const envVars = {
   MODEL_ENDPOINTS_PRIVATE: {
     schema: z.stringbool().optional(),
     description:
-      "Whether a workspace's own model endpoint (Settings › AI keys › Other provider) may be on this server's network or over http: an Ollama, vLLM, LM Studio or LiteLLM next to it. The same switch covers the other addresses a workspace names: custom MCP servers and their sign-in, its own bucket, server icons and the pages agents read. Unset: allowed, except on agentes.chat Cloud (https://app.agentes.chat) and with `ALLOW_SIGNUP=true`, where only public https addresses are, checked again at every connection.",
+      "Whether a workspace's own model endpoint (Settings › AI keys › Other provider) may be on this server's network or over http: an Ollama, vLLM, LM Studio or LiteLLM next to it. The same switch covers the other addresses a workspace names: its own bucket, server icons and the pages agents read. Custom MCP servers have a switch of their own (`MCP_PRIVATE_SERVERS`). Unset: allowed, except on agentes.chat Cloud (https://app.agentes.chat) and with `ALLOW_SIGNUP=true`, where only public https addresses are, checked again at every connection.",
+    section: "Agents",
+  },
+  MCP_PRIVATE_SERVERS: {
+    schema: z.stringbool().optional(),
+    description:
+      "Whether a workspace may connect MCP servers on this server's own network or over plain http: a local or loopback one (a gateway, an MCP proxy, something on 127.0.0.1:3000), reached with Streamable HTTP or the older SSE transport. Off unless set: only public https servers are, checked again at every connection, as is the servers' sign-in.",
+    section: "Agents",
+  },
+  MCP_STDIO_SERVERS: {
+    schema: z.string().optional(),
+    description:
+      'Path to a JSON file listing the MCP servers this server runs as local processes (stdio), in Claude Desktop\'s shape: `{"mcpServers": {"<name>": {"command": "npx", "args": ["-y", "some-mcp"], "env": {"TOKEN": "…"}, "label": "Some MCP", "orgs": ["<workspace id>"]}}}`. Admins connect one by its `stdio://<name>` address; `orgs` limits it to those workspaces (unset: every workspace here). The commands run as this server\'s own user, so only this file adds them.',
     section: "Agents",
   },
   SUMMARY_MODEL: {
