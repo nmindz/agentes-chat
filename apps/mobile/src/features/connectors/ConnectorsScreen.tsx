@@ -56,7 +56,7 @@ import {
   CATEGORIES,
   connectionOf,
   galleryTiles,
-  isHttpsUrl,
+  isServerAddress,
   SUGGESTED,
   searchConnectors,
   shownMailboxes,
@@ -140,7 +140,7 @@ function Gallery() {
     else sheet.open(<ConnectSheet def={def} />);
   };
   // Connecting by an address: the one typed in the search when it is one.
-  const openAddress = () => sheet.open(<AddressSheet {...(isHttpsUrl(q.trim()) ? { url: q.trim() } : {})} />);
+  const openAddress = () => sheet.open(<AddressSheet {...(isServerAddress(q.trim()) ? { url: q.trim() } : {})} />);
   // A connection opens its own screen (a server connected by an address we don't know included).
   const openItem = (item: ConnectedItem) => openConnection(item.id);
   // From an agent's card in the chat (`?connect=<catalog id>` or `?mcp=<address>`, `?mcp=` alone: any address): the
@@ -208,7 +208,7 @@ function Gallery() {
       ) : (
         <>
           {/* A pasted address connects a server by it, from the search itself. */}
-          {searching && admin && isHttpsUrl(q.trim()) ? <AddressRow url={q.trim()} onPress={openAddress} /> : null}
+          {searching && admin && isServerAddress(q.trim()) ? <AddressRow url={q.trim()} onPress={openAddress} /> : null}
           {searching ? null : (
             <>
               {admin || connectedCount > 0 ? (

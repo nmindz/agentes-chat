@@ -76,7 +76,7 @@ import {
   connectHow,
   connectionOf,
   doneFinishing,
-  isHttpsUrl,
+  isServerAddress,
   markFinishing,
   needsKeyText,
   stateOf,
@@ -554,13 +554,13 @@ function ConnectStep({
   const [url, setUrl] = useState(initialUrl ?? "");
   // By address: the address first (Continuar checks it), then how to get in, once the host is known.
   const [phase, setPhase] = useState<"address" | "enter">(() =>
-    askUrl && !isHttpsUrl(initialUrl ?? "") ? "address" : "enter",
+    askUrl && !isServerAddress(initialUrl ?? "") ? "address" : "enter",
   );
   const [key, setKey] = useState("");
   const [error, setError] = useState<string | null>(null);
   const busy = start.isPending || complete.isPending || withKey.isPending || connect.isPending || installer.busy;
   const serverUrl = fixed ?? (def?.kind === "remote_mcp" ? def.serverUrl : url.trim());
-  const shownName = name || serverUrl.replace(/^https:\/\//, "").split("/")[0] || "";
+  const shownName = name || serverUrl.replace(/^(https?|stdio):\/\//, "").split("/")[0] || "";
   const keyLabel = t("mobile.connectors.keyLabel", { name: shownName });
   // The service's name: the server names another account after it ("Stripe 2"). A catalog entry's goes in English,
   // so each viewer reads a name nobody changed in their own language.
@@ -637,7 +637,7 @@ function ConnectStep({
   const signIn = async () => {
     setError(null);
     setRefused(null);
-    if (askUrl && !isHttpsUrl(url)) return oops(t("mobile.connectors.addressInvalid"));
+    if (askUrl && !isServerAddress(url)) return oops(t("mobile.connectors.addressInvalid"));
     try {
       if (byAddress) {
         const res = await connect.mutateAsync({
@@ -670,7 +670,7 @@ function ConnectStep({
     if (canHeaders && connectsWithoutKey(headers, savedHeaders) && key.trim() === "") return signIn();
     setError(null);
     setRefused(null);
-    if (askUrl && !isHttpsUrl(url)) return oops(t("mobile.connectors.addressInvalid"));
+    if (askUrl && !isServerAddress(url)) return oops(t("mobile.connectors.addressInvalid"));
     if (key.trim().length < 8) return oops(t("mobile.connectors.keyShort"));
     try {
       if (byAddress) {
@@ -702,7 +702,7 @@ function ConnectStep({
   };
   const field = [styles.field, { backgroundColor: c.raised, color: c.ink, borderColor: c.line }];
   const toEnter = () => {
-    if (!isHttpsUrl(url.trim())) return oops(t("mobile.connectors.addressInvalid"));
+    if (!isServerAddress(url.trim())) return oops(t("mobile.connectors.addressInvalid"));
     setError(null);
     setPhase("enter");
   };

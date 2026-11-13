@@ -2180,7 +2180,7 @@ export const featureKeysEn = {
     addressTitle: "Connect by address",
     addressHelp: "The service's MCP server address (starts with https://).",
     addressLabel: "Address",
-    addressInvalid: "Use an https:// address.",
+    addressInvalid: "Use an https://, http:// or stdio:// address.",
     needsKey: "This server asks for a key.",
     working: "Connecting…",
     failed: "Couldn't connect. Try again.",

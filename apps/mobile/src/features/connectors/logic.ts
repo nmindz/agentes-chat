@@ -240,10 +240,15 @@ export function monogram(label: string): string {
   return letters.toUpperCase();
 }
 
-/** A plausible MCP server address (https only, like the server). */
-export function isHttpsUrl(value: string): boolean {
+/**
+ * A plausible MCP server address: a public https one, one on this server's own network or over http (the backend
+ * refuses those unless the operator allows them, `MCP_PRIVATE_SERVERS`), or a server this one runs itself
+ * (`stdio://<name>`). The app can't know that switch, so it never guesses: the backend's answer says.
+ */
+export function isServerAddress(value: string): boolean {
   try {
-    return new URL(value.trim()).protocol === "https:";
+    const { protocol } = new URL(value.trim());
+    return protocol === "https:" || protocol === "http:" || protocol === "stdio:";
   } catch {
     return false;
   }

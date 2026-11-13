@@ -2104,7 +2104,7 @@ export const featureKeysPtBR = {
     addressTitle: "Conectar pelo endereço",
     addressHelp: "O endereço do servidor MCP do serviço (começa com https://).",
     addressLabel: "Endereço",
-    addressInvalid: "Use um endereço https://.",
+    addressInvalid: "Use um endereço https://, http:// ou stdio://.",
     needsKey: "Esse servidor pede uma chave.",
     working: "Conectando…",
     failed: "Não deu para conectar. Tente de novo.",

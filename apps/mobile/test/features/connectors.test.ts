@@ -33,7 +33,7 @@ import {
   iconUri,
   installationIdOf,
   isFinishing,
-  isHttpsUrl,
+  isServerAddress,
   markFinishing,
   monogram,
   needsKeyText,
@@ -319,8 +319,11 @@ test("icons only from our own path; brand colors only as #rrggbb; monograms; htt
   expect(brandOf("red")).toBeNull();
   expect(monogram("Google Drive")).toBe("GD");
   expect(monogram("acme")).toBe("A");
-  expect(isHttpsUrl("https://mcp.acme.dev/sse")).toBe(true);
-  expect(isHttpsUrl("http://mcp.acme.dev")).toBe(false);
+  // Any MCP address the backend may take: https, http, or a local server this one runs (`stdio://`).
+  expect(isServerAddress("https://mcp.acme.dev/sse")).toBe(true);
+  expect(isServerAddress("http://127.0.0.1:3000/mcp")).toBe(true);
+  expect(isServerAddress("stdio://notes")).toBe(true);
+  expect(isServerAddress("mcp.acme.dev")).toBe(false);
 });
 
 describe("Ferramentas: Salvar stays at hand", () => {
