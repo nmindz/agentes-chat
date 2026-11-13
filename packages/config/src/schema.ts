@@ -466,7 +466,13 @@ export const envVars = {
   MCP_STDIO_SERVERS: {
     schema: z.string().optional(),
     description:
-      'Path to a JSON file listing the MCP servers this server runs as local processes (stdio), in Claude Desktop\'s shape: `{"mcpServers": {"<name>": {"command": "npx", "args": ["-y", "some-mcp"], "env": {"TOKEN": "…"}, "label": "Some MCP", "orgs": ["<workspace id>"]}}}`. Admins connect one by its `stdio://<name>` address; `orgs` limits it to those workspaces (unset: every workspace here). The commands run as this server\'s own user, so only this file adds them.',
+      'Path to a JSON file listing the MCP servers this server runs as local processes (stdio), in Claude Desktop\'s shape: `{"mcpServers": {"<name>": {"command": "npx", "args": ["-y", "some-mcp"], "env": {"TOKEN": "…"}, "label": "Some MCP", "orgs": ["<workspace id>"]}}}`. Admins connect one by its `stdio://<name>` address; `orgs` limits it to those workspaces (unset: every workspace here). The commands run as this server\'s own user. A server of this file wins over one of the same name added in Settings (`MCP_STDIO_EDITABLE`).',
+    section: "Agents",
+  },
+  MCP_STDIO_EDITABLE: {
+    schema: z.stringbool().optional(),
+    description:
+      "Whether the server's owner (its first account) may add, change and remove the MCP servers this server runs (stdio) in Settings › Connectors, with their commands, arguments and variables, as `MCP_STDIO_SERVERS` does. Their commands run as this server's own user, so anyone with the owner's account can run commands here. Off unless set, and always off on agentes.chat Cloud (https://app.agentes.chat).",
     section: "Agents",
   },
   SUMMARY_MODEL: {
