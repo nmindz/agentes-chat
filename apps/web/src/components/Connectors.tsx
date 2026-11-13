@@ -76,6 +76,7 @@ import {
   MailRow,
   mailChoices,
 } from "@/components/MailConnect";
+import { McpServersCard } from "@/components/McpServersCard";
 import { useOrg } from "@/components/org-context";
 import { useAgentsAccess } from "@/hooks/useAgentsAccess";
 import { useRightHandLook } from "@/hooks/useRightHandLook";
@@ -305,6 +306,7 @@ export function ConnectorsSection({
         />
       </Card>
       <GitHubAppServerCard />
+      <McpServersCard />
       <Card aria-labelledby="sec-mcp">
         <CardHeader
           id="sec-mcp"

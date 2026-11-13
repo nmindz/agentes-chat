@@ -12829,6 +12829,88 @@ export const ptBR = {
       removed: "App do GitHub removido deste servidor.",
     },
   },
+  /** Configurações › Conectores para o dono do servidor (nunca no agentes.chat): os servidores MCP que ele roda como processos locais (stdio). */
+  mcpServers: {
+    title: "Servidores MCP que este servidor roda",
+    lead: "Cada um roda como um processo local, com o usuário deste servidor. Os admins dos workspaces conectam um deles em Adicionar MCP pelo endereço stdio:// dele.",
+    add: "Adicionar servidor",
+    none: "Nenhum ainda. Adicione um, e os admins dos workspaces já podem conectar.",
+    notEditable:
+      "Para adicionar servidores aqui, defina MCP_STDIO_EDITABLE=true nas configurações deste servidor (.env) e reinicie. Até lá, só rodam os do arquivo dele (MCP_STDIO_SERVERS).",
+    /** Um chip num servidor definido em `MCP_STDIO_SERVERS`: aqui ele só é lido. */
+    fromFile: "Do arquivo do servidor",
+    invalid:
+      "Este servidor não consegue abrir as variáveis salvas (outro AGENTES_SECRET), então os workspaces não veem ele. Edite e digite os valores de novo.",
+    orgs: {
+      all: "Todos os workspaces",
+      here: "Só este workspace",
+      count_one: "Em {{count}} workspace",
+      count_other: "Em {{count}} workspaces",
+    },
+    test: {
+      button: "Testar",
+      name: "Testar {{name}}",
+      started_one: "Iniciou e oferece {{count}} ferramenta.",
+      started_other: "Iniciou e oferece {{count}} ferramentas.",
+      /** Depois dos primeiros nomes de ferramenta da lista. */
+      more_one: "e mais {{count}}",
+      more_other: "e mais {{count}}",
+      noTools: "Iniciou, mas não oferece nenhuma ferramenta.",
+      not_found:
+        "Este servidor não encontra o comando. Ele roda com o usuário deste servidor: a imagem Docker tem bun e bunx, mas não npx nem uvx.",
+      failed: "O comando iniciou, mas parou ou não falou MCP.",
+      timeout: "Não respondeu em 30 segundos.",
+    },
+    edit: "Editar",
+    editName: "Editar {{name}}",
+    remove: "Remover",
+    removeName: "Remover {{name}}",
+    removeTitle: "Remover {{name}}?",
+    removeText: "Os workspaces que conectaram perdem as ferramentas dele na hora. As variáveis salvas são apagadas.",
+    added: "{{name}} adicionado. Os admins dos workspaces já podem conectar.",
+    saved: "{{name}} salvo.",
+    removed: "{{name}} removido deste servidor.",
+    form: {
+      addTitle: "Adicionar um servidor MCP",
+      editTitle: "Editar {{name}}",
+      name: "Nome",
+      /** Um nome de exemplo, também no endereço mostrado sob o campo enquanto está vazio. */
+      namePlaceholder: "meu-servidor",
+      nameExample: "Os admins conectam em {{address}}. Não dá para mudar depois.",
+      nameInvalid: "Use até 64 letras, números, - ou _, começando com letra ou número.",
+      nameTaken: "Já existe um servidor com esse nome.",
+      nameInFile: "Esse nome está no arquivo do servidor (MCP_STDIO_SERVERS). Escolha outro.",
+      notEditable: "Não dá mais para adicionar servidores aqui: o MCP_STDIO_EDITABLE está desligado neste servidor.",
+      label: "Nome exibido",
+      labelExample: "O que os admins veem ao conectar. Vazio: o nome.",
+      description: "Descrição (opcional)",
+      command: "Comando",
+      commandRequired: "Digite o comando a rodar.",
+      args: "Argumentos",
+      argsExample: "Um por linha.",
+      cwd: "Pasta de trabalho (opcional)",
+      vars: "Variáveis",
+      varsNone: "Nenhuma.",
+      varName: "Nome da variável",
+      /** Nomeia uma linha de variável ainda sem nome ("Valor para nova variável"). */
+      newVar: "nova variável",
+      varValue: "Valor para {{name}}",
+      value: "Valor",
+      /** Uma variável já salva: o valor nunca aparece, e o campo vazio mantém o que está lá. */
+      savedValue: "Salvo. Deixe vazio para manter.",
+      removeVar: "Remover {{name}}",
+      addVar: "Adicionar variável",
+      varNameInvalid: "O nome de uma variável usa letras, números e _, e não começa com número.",
+      varNameTwice: "{{name}} aparece duas vezes.",
+      varValueRequired: "Digite um valor para {{name}}.",
+      orgs: "Quais workspaces",
+      /** O servidor também está em outros workspaces: eles continuam como estão. */
+      orgsChosen: "Só os escolhidos",
+      orgsKept: "Continua nos workspaces onde está agora ({{count}}).",
+      warning: "O comando roda neste servidor com o usuário dele, com acesso a tudo o que esse usuário alcança.",
+      submitAdd: "Adicionar servidor",
+    },
+  },
   /** Back from a provider's sign-in that didn't connect (`?connector_error=`, `?github_app_error=`). */
   oauthReturn: {
     cancelled: "A conexão foi cancelada. Nada mudou.",

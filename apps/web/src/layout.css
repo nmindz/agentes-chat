@@ -5230,6 +5230,79 @@ html:not([data-pointer]) .catalog-tile:focus-visible {
   row-gap: var(--space-2);
 }
 
+/*
+ * Settings → Conectores → the MCP servers this server runs: a server's address and command line in mono, cut by the
+ * row, never past it; a test's outcome under them. Its actions go under the text on a phone.
+ */
+.mcp-servers .ac-list__row > .ac-acts {
+  flex-wrap: wrap;
+  row-gap: var(--space-2);
+}
+.mcp-servers__info {
+  gap: var(--space-1);
+}
+.mcp-servers__code,
+.mcp-servers__tools code {
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+.mcp-servers__test {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.mcp-servers__test:empty {
+  display: none;
+}
+.mcp-servers__tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+.mcp-servers__detail {
+  margin: 0;
+  max-height: 160px;
+  overflow: auto;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--sunken);
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* The add/edit dialog: commands, arguments and variable names in mono; a variable's name, value and × on one line. */
+.mcp-form__code {
+  font-family: var(--font-mono);
+}
+.mcp-form__vars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.mcp-form__var {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+/* On a phone the value goes under its name, the × staying beside the name. */
+@media (max-width: 640px) {
+  .mcp-form__var {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .mcp-form__var > :nth-child(2) {
+    grid-row: 2;
+    grid-column: 1;
+  }
+}
+
 /* The connect flow: one dialog, three steps (conectar → o que faz → quem usa). */
 .cflow__title {
   display: flex;

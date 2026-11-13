@@ -49,6 +49,9 @@ import type {
   ImportItemKind,
   ImportItemResult,
   Instance,
+  InstanceMcpServer,
+  InstanceMcpServers,
+  InstanceMcpServerTest,
   InvitationPreview,
   InvitationState,
   InvitationWithStatus,
@@ -401,6 +404,13 @@ export interface FakeState {
    * (null). Saving one makes GIFs available here (`media.gifsAvailable`), removing it takes them away.
    */
   gifKey?: GifKey;
+  /**
+   * `system.mcpServers`: the MCP servers this server runs (stdio); unset = I'm not the installation's owner on a
+   * self-hosted server (null). Saving needs `editable`, and a name in the server's file (source `env`) is refused.
+   */
+  mcpServers?: InstanceMcpServers;
+  /** What `system.testMcpServer` answers per server name (default: it starts with no tools). */
+  mcpServerTests?: Record<string, InstanceMcpServerTest>;
   /** `system.speechKey`: unset = I'm not the installation's owner on a self-hosted server (null). */
   speechKey?: SpeechKey;
   /** The keys a provider refuses when `system.saveSpeechKey` tries them (422, nothing kept). */
@@ -1514,6 +1524,49 @@ export function createFakeHttpApi(state: FakeState): Omit<HttpApi, FakedParts> {
         state.gifKey = { source: null, hint: null, state: "off" };
         state.media = { ...state.media, gifsAvailable: false };
         return state.gifKey;
+      },
+      mcpServers: async () => (state.mcpServers ? structuredClone(state.mcpServers) : null),
+      saveMcpServer: async (name, draft) => {
+        log("system.saveMcpServer", name, draft);
+        const view = state.mcpServers;
+        if (!view) throw new ApiError(404, "not_found", "Not found");
+        if (!view.editable) {
+          throw new ApiError(409, "mcp_server_not_editable", "Servers are added here only with MCP_STDIO_EDITABLE on.");
+        }
+        const before = view.servers.find((s) => s.name === name);
+        if (before?.source === "env") {
+          throw new ApiError(409, "mcp_server_env", `"${name}" is in this server's file (MCP_STDIO_SERVERS).`);
+        }
+        const saved: InstanceMcpServer = {
+          name,
+          address: `stdio://${name}`,
+          label: draft.label || name,
+          description: draft.description ?? null,
+          command: draft.command,
+          args: draft.args,
+          cwd: draft.cwd ?? null,
+          orgs: draft.orgs,
+          env: draft.env.map((v) => v.name),
+          source: "settings",
+          state: "ok",
+          updatedAt: new Date().toISOString(),
+        };
+        view.servers = before ? view.servers.map((s) => (s.name === name ? saved : s)) : [...view.servers, saved];
+        return structuredClone(saved);
+      },
+      removeMcpServer: async (name) => {
+        log("system.removeMcpServer", name);
+        const view = state.mcpServers;
+        if (!view) throw new ApiError(404, "not_found", "Not found");
+        view.servers = view.servers.filter((s) => s.name !== name);
+      },
+      testMcpServer: async (name) => {
+        log("system.testMcpServer", name);
+        if (!state.mcpServers?.servers.some((s) => s.name === name)) {
+          throw new ApiError(404, "not_found", "Not found");
+        }
+        const result: InstanceMcpServerTest = state.mcpServerTests?.[name] ?? { ok: true, tools: [] };
+        return structuredClone(result);
       },
       speechKey: async () => state.speechKey ?? null,
       saveSpeechKey: async (input) => {
