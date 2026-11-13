@@ -1965,7 +1965,7 @@
     "addressTitle": "주소로 연결",
     "addressHelp": "서비스의 MCP 서버 주소예요(https://로 시작).",
     "addressLabel": "주소",
-    "addressInvalid": "https:// 주소를 사용하세요.",
+    "addressInvalid": "https://, http:// 또는 stdio:// 주소를 사용하세요.",
     "needsKey": "이 서버는 키가 필요해요.",
     "working": "연결하는 중…",
     "failed": "연결하지 못했어요. 다시 시도해 주세요.",

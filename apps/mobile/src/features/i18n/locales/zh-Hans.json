@@ -1965,7 +1965,7 @@
     "addressTitle": "通过地址连接",
     "addressHelp": "该服务的 MCP 服务器地址（以 https:// 开头）。",
     "addressLabel": "地址",
-    "addressInvalid": "请使用 https:// 地址。",
+    "addressInvalid": "请使用 https://、http:// 或 stdio:// 地址。",
     "needsKey": "此服务器需要密钥。",
     "working": "正在连接…",
     "failed": "无法连接，请重试。",

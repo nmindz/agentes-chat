@@ -14289,11 +14289,10 @@ export const en = {
     toolsTitle: "What {{name}} does",
     whoTitle: "Who can use {{name}}",
     oauthHelp: "You authorize on {{name}}'s page and come back here.",
-    customText:
-      "Any MCP server by its address: a public https one, one on this server's network, or a local one this server runs. If it supports OAuth, you authorize on its page.",
+    customText: "Any MCP server by its address. If it supports OAuth, you authorize on its page.",
     urlHelp: "The server's https address.",
     urlFormats:
-      "A public https address, an address on this server's network or over http where the server allows it, or a local server's (stdio://name) that the server runs itself.",
+      "An https address. Where the server allows them, also an http address, one on its own network, or a local server's (stdio://name).",
     localServers: "Local servers this one runs",
     name: "Name",
     namePlaceholder: "E.g. Support",

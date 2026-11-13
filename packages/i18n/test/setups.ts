@@ -185,6 +185,8 @@ export const SHOWN_ONLY: Record<Condition, readonly string[]> = {
     // The server's own GitHub App card goes only to its pinned owner off agentes.chat (`setup` is null elsewhere), and
     // the admins' line about it only where `ownerCreates` (false on agentes.chat, ADR 0156).
     "githubApp.server.",
+    // The MCP servers this server runs: a card for its pinned owner only, off agentes.chat (null elsewhere).
+    "mcpServers.",
     "githubApp.ownerHint",
   ],
   email: [

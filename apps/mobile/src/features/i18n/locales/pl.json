@@ -2268,7 +2268,7 @@
     "addressTitle": "Połącz przez adres",
     "addressHelp": "Adres serwera MCP usługi (zaczyna się od https://).",
     "addressLabel": "Adres",
-    "addressInvalid": "Użyj adresu https://.",
+    "addressInvalid": "Użyj adresu https://, http:// lub stdio://.",
     "needsKey": "Ten serwer wymaga klucza.",
     "working": "Łączenie…",
     "failed": "Nie udało się połączyć. Spróbuj ponownie.",

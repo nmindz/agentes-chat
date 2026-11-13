@@ -2160,7 +2160,7 @@
     "addressTitle": "Conectar por dirección",
     "addressHelp": "La dirección del servidor MCP del servicio (empieza con https://).",
     "addressLabel": "Dirección",
-    "addressInvalid": "Usa una dirección https://.",
+    "addressInvalid": "Usa una dirección https://, http:// o stdio://.",
     "needsKey": "Este servidor pide una clave.",
     "working": "Conectando…",
     "failed": "No se pudo conectar. Inténtalo de nuevo.",

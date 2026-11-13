@@ -2429,6 +2429,7 @@
       "storage.connect.theirName.b2Secret"
     ],
     "ja": [
+      "mcpServers.form.namePlaceholder",
       "channel.tooLong.fileName",
       "devices.system.android",
       "devices.system.ios",
@@ -2601,6 +2602,7 @@
       "storage.connect.provider.b2"
     ],
     "ko": [
+      "mcpServers.form.namePlaceholder",
       "channel.tooLong.fileName",
       "devices.system.android",
       "devices.system.ios",
@@ -2767,6 +2769,7 @@
       "storage.connect.provider.b2"
     ],
     "zh-Hans": [
+      "mcpServers.form.namePlaceholder",
       "channel.tooLong.fileName",
       "devices.system.android",
       "devices.system.ios",
@@ -2925,6 +2928,7 @@
     ],
     "id": [
       "shell.email.label",
+      "mcpServers.form.namePlaceholder",
       "devices.cpus",
       "devices.memory",
       "devices.system.android",

@@ -5106,7 +5106,7 @@
     "value": "Address"
   },
   "connectors.addressInvalid": {
-    "value": "Use an https:// address."
+    "value": "Use an https://, http:// or stdio:// address."
   },
   "connectors.needsKey": {
     "value": "This server asks for a key."

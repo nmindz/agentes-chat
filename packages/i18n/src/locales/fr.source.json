@@ -30417,6 +30417,198 @@
   "githubApp.server.removed": {
     "value": "GitHub app removed from this server."
   },
+  "mcpServers.title": {
+    "value": "MCP servers this server runs"
+  },
+  "mcpServers.lead": {
+    "value": "Each one runs as a local process, as this server's own user. Workspace admins connect one in Add MCP by its stdio:// address."
+  },
+  "mcpServers.add": {
+    "value": "Add server"
+  },
+  "mcpServers.none": {
+    "value": "None yet. Add one, and workspace admins can connect it."
+  },
+  "mcpServers.notEditable": {
+    "value": "To add servers here, set MCP_STDIO_EDITABLE=true in this server's settings (.env) and restart it. Until then, only the ones in its file (MCP_STDIO_SERVERS) run."
+  },
+  "mcpServers.fromFile": {
+    "value": "From the server's file"
+  },
+  "mcpServers.invalid": {
+    "value": "This server can't open its saved variables (another AGENTES_SECRET), so workspaces aren't offered it. Edit it and type their values again."
+  },
+  "mcpServers.orgs.all": {
+    "value": "Every workspace"
+  },
+  "mcpServers.orgs.here": {
+    "value": "Only this workspace"
+  },
+  "mcpServers.orgs.count": {
+    "value": {
+      "one": "In {{count}} workspace",
+      "other": "In {{count}} workspaces"
+    }
+  },
+  "mcpServers.test.button": {
+    "value": "Test"
+  },
+  "mcpServers.test.name": {
+    "value": "Test {{name}}"
+  },
+  "mcpServers.test.started": {
+    "value": {
+      "one": "It started and offers {{count}} tool.",
+      "other": "It started and offers {{count}} tools."
+    }
+  },
+  "mcpServers.test.more": {
+    "value": {
+      "one": "and {{count}} more",
+      "other": "and {{count}} more"
+    }
+  },
+  "mcpServers.test.noTools": {
+    "value": "It started, but offers no tools."
+  },
+  "mcpServers.test.not_found": {
+    "value": "This server can't find the command. It runs as this server's own user: the Docker image has bun and bunx, but not npx or uvx."
+  },
+  "mcpServers.test.failed": {
+    "value": "The command started, but stopped or didn't speak MCP."
+  },
+  "mcpServers.test.timeout": {
+    "value": "It didn't answer within 30 seconds."
+  },
+  "mcpServers.edit": {
+    "value": "Edit"
+  },
+  "mcpServers.editName": {
+    "value": "Edit {{name}}"
+  },
+  "mcpServers.remove": {
+    "value": "Remove"
+  },
+  "mcpServers.removeName": {
+    "value": "Remove {{name}}"
+  },
+  "mcpServers.removeTitle": {
+    "value": "Remove {{name}}?"
+  },
+  "mcpServers.removeText": {
+    "value": "Workspaces that connected it lose its tools at once. Its saved variables are deleted."
+  },
+  "mcpServers.added": {
+    "value": "{{name}} added. Workspace admins can connect it now."
+  },
+  "mcpServers.saved": {
+    "value": "{{name}} saved."
+  },
+  "mcpServers.removed": {
+    "value": "{{name}} removed from this server."
+  },
+  "mcpServers.form.addTitle": {
+    "value": "Add an MCP server"
+  },
+  "mcpServers.form.editTitle": {
+    "value": "Edit {{name}}"
+  },
+  "mcpServers.form.name": {
+    "value": "Name"
+  },
+  "mcpServers.form.namePlaceholder": {
+    "value": "my-server"
+  },
+  "mcpServers.form.nameExample": {
+    "value": "Admins connect it at {{address}}. It can't change later."
+  },
+  "mcpServers.form.nameInvalid": {
+    "value": "Use up to 64 letters, digits, - or _, starting with a letter or digit."
+  },
+  "mcpServers.form.nameTaken": {
+    "value": "There's already a server with this name."
+  },
+  "mcpServers.form.nameInFile": {
+    "value": "This name is in the server's file (MCP_STDIO_SERVERS). Pick another."
+  },
+  "mcpServers.form.notEditable": {
+    "value": "Servers can't be added here anymore: MCP_STDIO_EDITABLE is off on this server."
+  },
+  "mcpServers.form.label": {
+    "value": "Label"
+  },
+  "mcpServers.form.labelExample": {
+    "value": "What admins see when they connect it. Empty: the name."
+  },
+  "mcpServers.form.description": {
+    "value": "Description (optional)"
+  },
+  "mcpServers.form.command": {
+    "value": "Command"
+  },
+  "mcpServers.form.commandRequired": {
+    "value": "Enter the command to run."
+  },
+  "mcpServers.form.args": {
+    "value": "Arguments"
+  },
+  "mcpServers.form.argsExample": {
+    "value": "One per line."
+  },
+  "mcpServers.form.cwd": {
+    "value": "Working folder (optional)"
+  },
+  "mcpServers.form.vars": {
+    "value": "Variables"
+  },
+  "mcpServers.form.varsNone": {
+    "value": "None."
+  },
+  "mcpServers.form.varName": {
+    "value": "Variable name"
+  },
+  "mcpServers.form.newVar": {
+    "value": "new variable"
+  },
+  "mcpServers.form.varValue": {
+    "value": "Value for {{name}}"
+  },
+  "mcpServers.form.value": {
+    "value": "Value"
+  },
+  "mcpServers.form.savedValue": {
+    "value": "Saved. Leave empty to keep it."
+  },
+  "mcpServers.form.removeVar": {
+    "value": "Remove {{name}}"
+  },
+  "mcpServers.form.addVar": {
+    "value": "Add variable"
+  },
+  "mcpServers.form.varNameInvalid": {
+    "value": "A variable's name uses letters, digits and _, and doesn't start with a digit."
+  },
+  "mcpServers.form.varNameTwice": {
+    "value": "{{name}} is there twice."
+  },
+  "mcpServers.form.varValueRequired": {
+    "value": "Enter a value for {{name}}."
+  },
+  "mcpServers.form.orgs": {
+    "value": "Which workspaces"
+  },
+  "mcpServers.form.orgsChosen": {
+    "value": "Only the chosen ones"
+  },
+  "mcpServers.form.orgsKept": {
+    "value": "It stays in the workspaces it's in now ({{count}})."
+  },
+  "mcpServers.form.warning": {
+    "value": "The command runs on this server as its own user, with access to whatever that user can reach."
+  },
+  "mcpServers.form.submitAdd": {
+    "value": "Add server"
+  },
   "oauthReturn.cancelled": {
     "value": "The connection was cancelled. Nothing changed."
   },
@@ -31376,7 +31568,7 @@
     "value": "MCP server address"
   },
   "connectors.serverUrlInvalid": {
-    "value": "Use an address that starts with https://."
+    "value": "Use an address that starts with https://, http:// or stdio://."
   },
   "connectors.saveKey": {
     "value": "Connect with the key"
@@ -34424,10 +34616,16 @@
     "value": "You authorize on {{name}}'s page and come back here."
   },
   "connectFlow.customText": {
-    "value": "Any MCP server by its https address. If it supports OAuth, you authorize on its page."
+    "value": "Any MCP server by its address. If it supports OAuth, you authorize on its page."
   },
   "connectFlow.urlHelp": {
     "value": "The server's https address."
+  },
+  "connectFlow.urlFormats": {
+    "value": "An https address. Where the server allows them, also an http address, one on its own network, or a local server's (stdio://name)."
+  },
+  "connectFlow.localServers": {
+    "value": "Local servers this one runs"
   },
   "connectFlow.name": {
     "value": "Name"

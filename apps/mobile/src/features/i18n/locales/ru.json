@@ -2268,7 +2268,7 @@
     "addressTitle": "Подключение по адресу",
     "addressHelp": "Адрес MCP-сервера сервиса (начинается с https://).",
     "addressLabel": "Адрес",
-    "addressInvalid": "Используйте адрес https://.",
+    "addressInvalid": "Используйте адрес https://, http:// или stdio://.",
     "needsKey": "Этот сервер запрашивает ключ.",
     "working": "Подключаем…",
     "failed": "Не удалось подключиться. Попробуйте снова.",

@@ -2066,7 +2066,7 @@
     "addressTitle": "Verbinden via adres",
     "addressHelp": "Het adres van de MCP-server van de dienst (begint met https://).",
     "addressLabel": "Adres",
-    "addressInvalid": "Gebruik een https://-adres.",
+    "addressInvalid": "Gebruik een https://-, http://- of stdio://-adres.",
     "needsKey": "Deze server vraagt om een sleutel.",
     "working": "Verbinden…",
     "failed": "Verbinden lukte niet. Probeer het opnieuw.",

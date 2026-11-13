@@ -2066,7 +2066,7 @@
     "addressTitle": "Per Adresse verbinden",
     "addressHelp": "Die Adresse des MCP-Servers des Dienstes (beginnt mit https://).",
     "addressLabel": "Adresse",
-    "addressInvalid": "Nutze eine https://-Adresse.",
+    "addressInvalid": "Verwende eine https://-, http://- oder stdio://-Adresse.",
     "needsKey": "Dieser Server verlangt einen Schlüssel.",
     "working": "Wird verbunden…",
     "failed": "Verbinden hat nicht geklappt. Versuch es noch einmal.",

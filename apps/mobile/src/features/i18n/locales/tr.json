@@ -2066,7 +2066,7 @@
     "addressTitle": "Adresle bağlan",
     "addressHelp": "Hizmetin MCP sunucu adresi (https:// ile başlar).",
     "addressLabel": "Adres",
-    "addressInvalid": "https:// ile başlayan bir adres kullanın.",
+    "addressInvalid": "Bir https://, http:// veya stdio:// adresi kullanın.",
     "needsKey": "Bu sunucu bir anahtar istiyor.",
     "working": "Bağlanıyor…",
     "failed": "Bağlanılamadı. Tekrar deneyin.",
