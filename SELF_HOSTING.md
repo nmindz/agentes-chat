@@ -1143,6 +1143,43 @@ without an OAuth app) or the GitHub App.
 </details>
 
 <details>
+<summary><b>MCP servers on your own network, and ones this server runs</b></summary>
+
+**Settings → Connectors → Add an MCP server** takes any MCP server by address. By default only public
+`https://` ones: every request is checked and pinned to a public address, at the connection and again at
+each message.
+
+Two operator switches open the rest, both off unless you set them:
+
+- **`MCP_PRIVATE_SERVERS=true`** lets a workspace connect servers on this machine's own network, over
+  `http://` or `https://`: a gateway, an MCP proxy, something on `127.0.0.1:3000`, an Ollama-like server
+  next to this one. Their OAuth (if any) must stay on the server's own hostname or on a public address.
+  Only turn it on where the people who administer workspaces are the ones you trust with this network:
+  a workspace's admins can then reach anything this server reaches.
+- **`MCP_STDIO_SERVERS=/etc/agentes/mcp.json`** lists the MCP servers this server runs itself, as local
+  processes (stdio), in the shape Claude Desktop uses:
+
+  ```json
+  {
+    "mcpServers": {
+      "notes": { "command": "npx", "args": ["-y", "some-notes-mcp"], "env": { "NOTES_TOKEN": "…" }, "label": "Notes" },
+      "files": { "command": "/opt/mcp/files", "orgs": ["<workspace id>"] }
+    }
+  }
+  ```
+
+  Each one appears in that dialog as a button, and its address is `stdio://<name>`. `orgs` limits it to
+  the workspaces listed (unset: every workspace on this server). The command runs as the server's own
+  user, so only this file adds one: no workspace can type a command. A file that isn't valid is logged
+  at boot and no local server is offered until it is fixed.
+
+Whichever the kind, a server's tools are listed, classified (read, write, or approval) and audited the
+same way, and sensitive ones ask a person before they run. A local server keeps its process open between
+calls (one per workspace and server, closed after five idle minutes), so it keeps the state it built.
+
+</details>
+
+<details>
 <summary><b>GitHub as an app</b></summary>
 
 Connected with a person's GitHub account, agents open pull requests and comment as that person. With the
