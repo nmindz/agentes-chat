@@ -16,6 +16,7 @@ import {
   useGitHubApp,
   useGithubAccess,
   useInstallGitHubApp,
+  useLocalServers,
   useRenameConnection,
   useStartOAuth,
 } from "@agenteschat/client";
@@ -41,7 +42,7 @@ import {
   orgAccessChange,
   outcomeText,
 } from "@agenteschat/client/lib/connected";
-import { humanize, isHttpsUrl, sameServer } from "@agenteschat/client/lib/custom-tools";
+import { humanize, isServerAddress, sameServer } from "@agenteschat/client/lib/custom-tools";
 import { errorText } from "@agenteschat/client/lib/errors";
 import { useHeldWhile } from "@agenteschat/client/lib/hold";
 import {
@@ -269,6 +270,8 @@ function ConnectStep({
   const catalog = useCatalog();
   const connections = useConnections(org.id);
   const servers = useCustomServers(org.id);
+  // The servers this server runs itself (stdio): only the operator's own file adds them, admins only pick one.
+  const local = useLocalServers(org.id, mode === undefined || mode === "add");
   const { connect } = useCustomServerAction(org.id);
   const withKey = useConnectWithKey(org.id);
   const oauth = useStartOAuth(org.id);
@@ -338,7 +341,7 @@ function ConnectStep({
     t("connectFlow.almost"),
   ]);
 
-  const urlError = touched && askUrl && !isHttpsUrl(url) ? t("connectors.serverUrlInvalid") : undefined;
+  const urlError = touched && askUrl && !isServerAddress(url) ? t("connectors.serverUrlInvalid") : undefined;
   const keyError = touched === "key" && apiKey.trim().length < 8 ? t("connectors.apiKeyInvalid") : undefined;
 
   const done = (next: ConnectedItem, outcome: ConnectOutcome) => {
@@ -377,7 +380,7 @@ function ConnectStep({
   const access = useGithubAccess(org.id, githubOrgs);
   const startOAuth = () => {
     setTouched("oauth");
-    if (askUrl && !isHttpsUrl(url)) return;
+    if (askUrl && !isServerAddress(url)) return;
     if (githubOrgs && access.data?.orgs) keepGithubOrgs(access.data.orgs);
     if (byAddress) {
       setRefused(null);
@@ -392,7 +395,7 @@ function ConnectStep({
   const startApp = () => installApp.mutate(back, { onSuccess: (to) => navigateAway(to) });
   const submitKey = () => {
     setTouched("key");
-    if ((askUrl && !isHttpsUrl(url)) || apiKey.trim().length < 8) return;
+    if ((askUrl && !isServerAddress(url)) || apiKey.trim().length < 8) return;
     if (byAddress) {
       setRefused(null);
       connect.mutate(
@@ -468,7 +471,16 @@ function ConnectStep({
             <p className="muted cflow__text">{t("connectFlow.customText")}</p>
           )}
           {askUrl && (
-            <Field label={t("connectors.serverUrl")} id="cflow-url" example={t("connectFlow.urlHelp")} error={urlError}>
+            <Field
+              label={t("connectors.serverUrl")}
+              id="cflow-url"
+              example={t("connectFlow.urlHelp")}
+              error={urlError}
+              hint={{
+                name: t("common.about", { label: t("connectors.serverUrl") }),
+                text: t("connectFlow.urlFormats"),
+              }}
+            >
               <Input
                 value={url}
                 onChange={(e) => {
@@ -479,6 +491,27 @@ function ConnectStep({
                 inputMode="url"
               />
             </Field>
+          )}
+          {askUrl && (local.data ?? []).length > 0 && (
+            <div className="cflow__local">
+              <p className="small muted">{t("connectFlow.localServers")}</p>
+              <div className="cflow__chips">
+                {(local.data ?? []).map((s) => (
+                  <Button
+                    key={s.name}
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      setUrl(s.serverUrl);
+                      setLabel(s.label);
+                      setNeedsKey(null);
+                    }}
+                  >
+                    {s.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
           )}
           {def === null && fixed === null && (
             <Field label={t("connectFlow.name")} id="cflow-name">

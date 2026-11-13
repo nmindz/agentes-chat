@@ -87,6 +87,8 @@ export function createMockCustomConnectors(
   };
   return {
     list: async (orgId) => clone(list(orgId)),
+    // The servers this one runs itself (stdio): the fake offers one, for the dialog's local picks.
+    localServers: async () => ctx.localMcpServers ?? [],
     connect: async (orgId, input) => {
       log("customConnectors.connect", orgId, {
         ...input,

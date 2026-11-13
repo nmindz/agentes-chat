@@ -5364,6 +5364,18 @@ html:not([data-pointer]) .cflow__more summary:focus-visible {
   margin-top: 4px;
   overflow-wrap: anywhere;
 }
+/* The servers this one runs itself (stdio): one button each, under the address field. */
+.cflow__local {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.cflow__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
 .cflow__lead {
   display: flex;
   flex-wrap: wrap;

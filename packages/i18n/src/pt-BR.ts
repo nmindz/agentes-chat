@@ -13159,7 +13159,7 @@ export const ptBR = {
     apiKeyHelp: "Fica cifrada no servidor. Ninguém vê depois.",
     apiKeyInvalid: "Cole a chave de API (pelo menos 8 caracteres).",
     serverUrl: "Endereço do servidor MCP",
-    serverUrlInvalid: "Use um endereço que comece com https://.",
+    serverUrlInvalid: "Use um endereço que comece com https://, http:// ou stdio://.",
     saveKey: "Conectar com a chave",
     disconnect: "Desconectar",
     disconnectName: "Desconectar {{name}}",
@@ -14197,8 +14197,12 @@ export const ptBR = {
     toolsTitle: "O que {{name}} faz",
     whoTitle: "Quem pode usar {{name}}",
     oauthHelp: "Você autoriza na página do {{name}} e volta para cá.",
-    customText: "Qualquer servidor MCP pelo endereço https. Se ele aceitar OAuth, você autoriza na página dele.",
+    customText:
+      "Qualquer servidor MCP pelo endereço: um https público, um na rede deste servidor ou um local que ele mesmo executa. Se ele aceitar OAuth, você autoriza na página dele.",
     urlHelp: "O endereço https do servidor.",
+    urlFormats:
+      "Um endereço https público, um endereço na rede deste servidor ou via http onde o servidor permitir, ou um servidor local (stdio://nome) que o próprio servidor executa.",
+    localServers: "Servidores locais que este executa",
     name: "Nome",
     namePlaceholder: "Ex.: Suporte",
     continueIn: "Continuar no {{name}}",

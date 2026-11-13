@@ -815,9 +815,9 @@ describe("the connect flow: conectar → conectado; Ajustar → o que faz → qu
     await click(within(service("Outro serviço")).getByRole("button", { name: "Conectar pelo endereço" }));
     const flow = () => screen().getAllByRole("dialog").at(-1) as HTMLElement;
     expect(screen().getByRole("dialog", { name: "Conectar servidor MCP" })).toBeTruthy();
-    await type(within(flow()).getByLabelText("Endereço do servidor MCP"), "http://inseguro");
+    await type(within(flow()).getByLabelText("Endereço do servidor MCP"), "inseguro");
     await click(within(flow()).getByRole("button", { name: "Conectar" }));
-    expect(flow().textContent).toContain("Use um endereço que comece com https://.");
+    expect(flow().textContent).toContain("Use um endereço que comece com https://, http:// ou stdio://.");
     await type(within(flow()).getByLabelText("Endereço do servidor MCP"), "https://oauth.suporte.example.com");
     await type(within(flow()).getByLabelText("Nome"), "Suporte");
     await click(within(flow()).getByRole("button", { name: "Conectar" }));
@@ -847,6 +847,29 @@ describe("the connect flow: conectar → conectado; Ajustar → o que faz → qu
     await settle(6);
     expect(screen().getByRole("dialog", { name: "Quem pode usar himetrica" })).toBeTruthy();
     expect(levels(flow(), ["Nível de Ada", "Nível de Atlas"])).toEqual(["Ler e escrever", "Ler e escrever"]);
+  });
+
+  test("a server this computer runs itself is a pick: its address is the operator's own", async () => {
+    const state = seedState({
+      connections: [],
+      localMcpServers: [
+        { name: "notes", label: "Anotações", description: "As notas deste computador", serverUrl: "stdio://notes" },
+      ],
+    });
+    const { dialog } = await open(state);
+    await click(within(dialog).getByRole("button", { name: /Não achou/ }));
+    await click(within(service("Outro serviço")).getByRole("button", { name: "Conectar pelo endereço" }));
+    const flow = () => screen().getAllByRole("dialog").at(-1) as HTMLElement;
+    // Offered by name, and picking one fills the address nobody types.
+    await click(within(flow()).getByRole("button", { name: "Anotações" }));
+    expect((within(flow()).getByLabelText("Endereço do servidor MCP") as HTMLInputElement).value).toBe("stdio://notes");
+    await click(within(flow()).getByRole("button", { name: "Conectar" }));
+    await settle(4);
+    expect(state.calls.find((c) => c.method === "customConnectors.connect")?.args[1]).toMatchObject({
+      serverUrl: "stdio://notes",
+      label: "Anotações",
+    });
+    cleanup();
   });
 
   test("new tools on a reviewed server: the row asks for review; disconnecting always asks first", async () => {

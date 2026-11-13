@@ -8,6 +8,8 @@ import type { Agent, Channel, Me, Member, Message } from "@agenteschat/client";
 export interface MockContext {
   seed: boolean;
   now: () => Date;
+  /** The MCP servers this server runs itself (stdio), as the fake of the local-server list offers them. */
+  localMcpServers?: { name: string; label: string; description?: string; serverUrl: string }[];
   /** Real data the seeds attach to. */
   lookup: {
     me(): Promise<Me | null>;

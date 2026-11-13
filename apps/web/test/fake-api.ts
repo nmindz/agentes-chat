@@ -197,6 +197,8 @@ function fakePlanAccount(money: boolean): PlanAccountUsage {
 
 export interface FakeState {
   me: Me | null;
+  /** The MCP servers this server runs itself (stdio), which the connector dialog offers by name (default: none). */
+  localMcpServers?: { name: string; label: string; description?: string; serverUrl: string }[];
   /** "Ver modelos de time" (`agents.teamTemplates`; default none). */
   teamTemplates?: TeamTemplate[];
   /** What a one-click proposed agent thinks with (default: what its draft suggested). */
@@ -4053,6 +4055,7 @@ export function createFakeApi(state: FakeState = seedState(), options: { seed?: 
   const ctx: MockContext = {
     seed: options.seed ?? true,
     now: () => new Date(),
+    ...(state.localMcpServers ? { localMcpServers: state.localMcpServers } : {}),
     lookup: {
       me: () => http.account.me(),
       agents: (orgId) => http.agents.list(orgId),
