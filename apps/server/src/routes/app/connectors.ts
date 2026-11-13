@@ -9,7 +9,7 @@ import {
   composioConnectorsOf,
   composioUsageOf,
   connectionView,
-  connectOverHttp,
+  connectMcp,
   connectorGrantValidator,
   connectorListing,
   createApiKeyConnection,
@@ -168,7 +168,7 @@ export function connectorRoutes(deps: AppDeps) {
     http: deps.extras?.http,
     resolveHost: deps.extras?.resolveHost,
     // A sign-in's account is asked of the server before it's stored (two accounts are told apart by it).
-    connect: withComposio(deps.extras?.mcpConnect ?? connectOverHttp, composio),
+    connect: withComposio(deps.extras?.mcpConnect ?? connectMcp, composio),
     composio,
   };
 

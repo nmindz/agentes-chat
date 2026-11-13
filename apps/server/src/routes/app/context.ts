@@ -6,7 +6,7 @@ import {
   type ConnectorTriggerDeps,
   closedRefusal,
   composioConnectorsOf,
-  connectOverHttp,
+  connectMcp,
   ForbiddenError,
   getMembership,
   MisconfiguredError,
@@ -63,7 +63,7 @@ export const routineConnectorDeps = (deps: AppDeps): ConnectorTriggerDeps => {
     publicUrl: deps.config.PUBLIC_URL,
     http: deps.extras?.http,
     resolveHost: deps.extras?.resolveHost,
-    connect: withComposio(deps.extras?.mcpConnect ?? connectOverHttp, composio),
+    connect: withComposio(deps.extras?.mcpConnect ?? connectMcp, composio),
     composio,
   };
 };

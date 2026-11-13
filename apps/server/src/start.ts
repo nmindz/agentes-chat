@@ -49,6 +49,7 @@ import {
 import {
   APP_JOB_KINDS,
   adoptRestoredOperatorEvents,
+  allowPrivateMcpServers,
   allowPrivateOutbound,
   allowsPrivateEndpoints,
   backfillMemoryTrust,
@@ -67,6 +68,7 @@ import {
   isAgentesCloud,
   isBlockedAddress,
   laneLimits,
+  loadStdioServers,
   memoryBudget,
   meterComposio,
   moveIssueComments,
@@ -78,6 +80,7 @@ import {
   retireMillionSendMailboxes,
   setMessageLinkBase,
   setRestrictionNotices,
+  setStdioServers,
   setWorkspaceComputers,
   shareCacheInvalidations,
   surfaceRoomFiles,
@@ -369,6 +372,19 @@ async function boot(
   // Addresses a workspace names (custom MCP servers, its own bucket, pages agents read) are pinned to public ones at
   // every request, except where the operator lets workspaces reach this server's network.
   allowPrivateOutbound(allowsPrivateEndpoints(config));
+  // Custom MCP servers have their own switch (off unless the operator sets it): a local or loopback one, over http.
+  allowPrivateMcpServers(config.MCP_PRIVATE_SERVERS === true);
+  // The servers this one runs itself (stdio): the operator's file, or none.
+  if (config.MCP_STDIO_SERVERS) {
+    try {
+      setStdioServers(loadStdioServers(config.MCP_STDIO_SERVERS));
+    } catch (error) {
+      console.error(
+        `MCP_STDIO_SERVERS: ${error instanceof Error ? error.message : String(error)}: no local MCP server`,
+      );
+      setStdioServers([]);
+    }
+  }
   // Per-process caches for agent/org/channel config, scopes, connections, credential rows (30 s TTL).
   enableCaches();
   // A write in any process (the app, a worker) clears what every process cached of it.

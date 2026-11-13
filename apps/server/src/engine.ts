@@ -22,7 +22,7 @@ import {
   type ContextDeps,
   CursorBrain,
   composioConnectorsOf,
-  connectOverHttp,
+  connectMcp,
   createAgentGifPoster,
   createAgentStyleToolSource,
   createApprovalRequestToolSource,
@@ -299,7 +299,7 @@ export function buildEngine(o: EngineOptions) {
     oauthApps: connectorOAuthApps(config),
     publicUrl: config.PUBLIC_URL,
     http: o.http,
-    connect: withComposio(o.mcpConnect ?? connectOverHttp, composio),
+    connect: withComposio(o.mcpConnect ?? connectMcp, composio),
     composio,
   };
   const storage: StorageDeps = {

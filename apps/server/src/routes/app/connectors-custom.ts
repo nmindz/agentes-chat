@@ -5,7 +5,7 @@ import {
   type CustomDeps,
   composioConnectorsOf,
   connectCustomServer,
-  connectOverHttp,
+  connectMcp,
   connectorIconFile,
   connectorListing,
   listCustomServers,
@@ -16,6 +16,8 @@ import {
   requirePermission,
   revokeConnection,
   saveCustomTools,
+  stdioServersFor,
+  stdioUrl,
   ValidationError,
   withComposio,
 } from "@agenteschat/engine";
@@ -144,7 +146,7 @@ export function customConnectorRoutes(deps: AppDeps) {
     publicUrl: config.PUBLIC_URL,
     http: deps.extras?.http,
     resolveHost: deps.extras?.resolveHost,
-    connect: withComposio(deps.extras?.mcpConnect ?? connectOverHttp, composio),
+    connect: withComposio(deps.extras?.mcpConnect ?? connectMcp, composio),
     composio,
     judge: deps.extras?.context?.judge,
     blobs: adapters.platformBlobs,
@@ -183,9 +185,9 @@ export function customConnectorRoutes(deps: AppDeps) {
       path: "/organizations/{orgId}/connectors/custom",
       tags,
       security,
-      summary: "Connect an https MCP server: connected, OAuth to finish, or an API key is needed",
+      summary: "Connect an MCP server by address: connected, OAuth to finish, or an API key is needed",
       description:
-        "A server's account is every agent's, whole (`connector:*`): its tools reach them once classified, and sensitive ones still ask for approval. The same address again is another account (\"Stripe 2\"), every agent's too; the same account again (the provider says) refreshes its sign-in (`outcome: same_account`). With `connectionId`, that account gets the new sign-in in place (`reconnected`); signing in to another account there is a 409 `connector.other_account`, and a sign-in whose account can't be checked a 409 `connector.account_unknown` (try again). `headers` (ADR 0186) are sent with every request to the server, the key's `Authorization` on top; without a key, a server that answers with them is connected by them alone, and one that asks for a sign-in is a 400 `connector.headers_with_sign_in`. A header that isn't taken is a 400 whose `params` name it (`header`, and `index`, its place in the list): `connector.header_name`, `connector.header_value`, `connector.header_reserved`, `connector.header_twice`, `connector.header_and_key` (`Authorization` beside a key), or `connector.headers_too_many`. With `connectionId` and no `headers`, saved ones that can no longer be read are a 400 `connector.headers_unreadable`: send them again, or `[]`.",
+        "The address is a public https server's, one on this server's network or over http where the operator allows it (`MCP_PRIVATE_SERVERS`), or `stdio://<name>` for a server this one runs itself (`…/connectors/local-servers`); a local server takes no key or headers (400 `connector.stdio_no_key`). A server's account is every agent's, whole (`connector:*`): its tools reach them once classified, and sensitive ones still ask for approval. The same address again is another account (\"Stripe 2\"), every agent's too; the same account again (the provider says) refreshes its sign-in (`outcome: same_account`). With `connectionId`, that account gets the new sign-in in place (`reconnected`); signing in to another account there is a 409 `connector.other_account`, and a sign-in whose account can't be checked a 409 `connector.account_unknown` (try again). `headers` (ADR 0186) are sent with every request to the server, the key's `Authorization` on top; without a key, a server that answers with them is connected by them alone, and one that asks for a sign-in is a 400 `connector.headers_with_sign_in`. A header that isn't taken is a 400 whose `params` name it (`header`, and `index`, its place in the list): `connector.header_name`, `connector.header_value`, `connector.header_reserved`, `connector.header_twice`, `connector.header_and_key` (`Authorization` beside a key), or `connector.headers_too_many`. With `connectionId` and no `headers`, saved ones that can no longer be read are a 400 `connector.headers_unreadable`: send them again, or `[]`.",
       request: {
         params: OrgParams,
         body: body(
@@ -228,6 +230,39 @@ export function customConnectorRoutes(deps: AppDeps) {
       soon: z.boolean().openapi({ description: "The vendor hasn't approved agentes.chat yet: it can't be connected." }),
     })
     .openapi("McpPreset");
+  const LocalServer = z
+    .object({
+      name: z.string(),
+      label: z.string(),
+      description: z.string().optional(),
+      serverUrl: z.string(),
+    })
+    .openapi("LocalMcpServer");
+  app.openapi(
+    createRoute({
+      method: "get",
+      path: "/organizations/{orgId}/connectors/local-servers",
+      tags,
+      security,
+      summary: "The MCP servers this server runs itself (stdio), for this workspace's admins to connect",
+      description:
+        "From the operator's own file (`MCP_STDIO_SERVERS`): each entry's name, label and `stdio://<name>` address. Their tools list, classify and ask for approval as any custom server's.",
+      request: { params: OrgParams },
+      responses: { 200: json(z.object({ servers: z.array(LocalServer) })), ...errors },
+    }),
+    async (c) => {
+      const { orgId } = c.req.valid("param");
+      await requirePermission(db, c.get("user").id, orgId, "manage_connectors");
+      const servers = stdioServersFor(orgId).map((s) => ({
+        name: s.name,
+        label: s.label,
+        ...(s.description ? { description: s.description } : {}),
+        serverUrl: stdioUrl(s.name),
+      }));
+      return c.json({ servers }, 200);
+    },
+  );
+
   app.openapi(
     createRoute({
       method: "get",
