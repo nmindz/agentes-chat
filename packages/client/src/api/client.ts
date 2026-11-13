@@ -193,6 +193,7 @@ import type {
   JoinClaim,
   JoinRequest,
   LearnedSkill,
+  LocalMcpServer,
   Machine,
   MachineAccess,
   MachineAccessReduce,
@@ -1356,7 +1357,13 @@ export interface ApiClient {
   customConnectors: {
     list(orgId: string): Promise<CustomServer[]>;
     /**
-     * Connects to an https MCP server: a new account, or with `connectionId` a new sign-in for that one
+     * The MCP servers this server runs itself (stdio), from the operator's file: each its `stdio://<name>` address, to
+     * connect as any other server (admins).
+     */
+    localServers(orgId: string): Promise<LocalMcpServer[]>;
+    /**
+     * Connects to an MCP server: a public https one, one on this server's network or over http where the operator
+     * allows it, or `stdio://<name>`. A new account, or with `connectionId` a new sign-in for that one
      * ("Reconectar"). Without `apiKey` the server tries OAuth (discovery + dynamic client registration); if the
      * MCP server doesn't support it, answers `needs_key` (`reason: "not_approved"` when it only registers apps it
      * approved, with its refusal in `detail`). `headers` go with every request to the server (at most 10; a refused

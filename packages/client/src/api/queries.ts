@@ -3817,6 +3817,16 @@ export function useCorrectMessage(orgId: string) {
 
 // ── Invites, custom MCP ─────────────────────────────────────────────────────
 
+/** The MCP servers this server runs itself (stdio), which its admins may connect (`MCP_STDIO_SERVERS`). */
+export const useLocalServers = (orgId: string, enabled = true) => {
+  const api = useApi();
+  return useQuery({
+    queryKey: keys.localServers(orgId),
+    queryFn: () => api.customConnectors.localServers(orgId),
+    enabled,
+  });
+};
+
 export const useCustomServers = (orgId: string, enabled = true) => {
   const api = useApi();
   return useQuery({ queryKey: keys.customServers(orgId), queryFn: () => api.customConnectors.list(orgId), enabled });

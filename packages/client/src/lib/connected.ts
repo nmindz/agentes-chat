@@ -52,7 +52,9 @@ export interface ConnectedItem {
   server: CustomServer | null;
 }
 
+/** A server's host for the row ("tickets.example.com"); a local server's address stands whole (`stdio://notes`). */
 const host = (url: string) => {
+  if (url.toLowerCase().startsWith("stdio:")) return url;
   try {
     return new URL(url).host;
   } catch {

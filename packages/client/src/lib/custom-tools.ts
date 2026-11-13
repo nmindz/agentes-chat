@@ -56,18 +56,26 @@ export const exposedTools = (server: CustomServer) =>
 
 export const isHttpsUrl = (v: string) => /^https:\/\/[^\s/]+/.test(v.trim());
 
+/**
+ * Whether a typed MCP address is one: a public https server, one on this server's own network or over http (the
+ * backend refuses those unless the operator allows them, `MCP_PRIVATE_SERVERS`), or a server this one runs itself
+ * (`stdio://<name>`). The app can't know the operator's switch, so it never guesses: the backend's answer says.
+ */
+export const isServerAddress = (v: string) => /^(https?|stdio):\/\/[^\s/]+/.test(v.trim());
+
 /** Same MCP address, ignoring a trailing slash and case. */
 export const sameServer = (a: string | null | undefined, b: string | null | undefined) =>
   Boolean(a && b) && (a ?? "").replace(/\/+$/, "").toLowerCase() === (b ?? "").replace(/\/+$/, "").toLowerCase();
 
 /**
  * Whether a listed server is the one at `url`. Who can't manage connectors is told only a server's origin, so a
- * listed address with no path or query also stands for any address on that host.
+ * listed address with no path or query also stands for any address on that host (https, or http where this server
+ * allows private ones); a local server's (`stdio://<name>`) matches as it is.
  */
 export const serverCovers = (listed: string | null | undefined, url: string | null | undefined) => {
   if (sameServer(listed, url)) return true;
   const origin = (listed ?? "").replace(/\/+$/, "").toLowerCase();
-  if (!/^https:\/\/[^\s/?#]+$/.test(origin)) return false;
+  if (!/^https?:\/\/[^\s/?#]+$/.test(origin)) return false;
   const rest = (url ?? "").trim().toLowerCase();
   return rest.startsWith(origin) && /^[/?#]/.test(rest.slice(origin.length));
 };

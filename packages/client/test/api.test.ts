@@ -614,6 +614,10 @@ describe("HTTP client: drive, storage, issues, routines, calendar, custom MCP, i
       [`POST ${org}/calendar/proposals/p1/confirm`]: { status: 200, body: { id: "e2" } },
       [`POST ${org}/calendar/proposals/p1/dismiss`]: { status: 204 },
       [`${org}/connectors/custom`]: { status: 200, body: { servers: [] } },
+      [`${org}/connectors/local-servers`]: {
+        status: 200,
+        body: { servers: [{ name: "notes", label: "Notes", serverUrl: "stdio://notes" }] },
+      },
       [`POST ${org}/connectors/custom`]: { status: 200, body: { status: "needs_key" } },
       [`PUT ${org}/connectors/custom/s1/tools`]: { status: 200, body: { id: "s1" } },
       [`POST ${org}/invite-links`]: { status: 201, body: { id: "l1", url: "https://x/invite/t", expiresAt: "t" } },
@@ -633,6 +637,10 @@ describe("HTTP client: drive, storage, issues, routines, calendar, custom MCP, i
     expect((await api.calendar.confirmProposal("o1", "p1")).id).toBe("e2");
     await api.calendar.dismissProposal("o1", "p1");
     expect(await api.customConnectors.list("o1")).toEqual([]);
+    // The servers this one runs itself: by their `stdio://<name>` addresses (admins).
+    expect(await api.customConnectors.localServers("o1")).toEqual([
+      { name: "notes", label: "Notes", serverUrl: "stdio://notes" },
+    ]);
     expect(await api.customConnectors.connect("o1", { serverUrl: "https://mcp", returnTo: "/" })).toEqual({
       status: "needs_key",
     });

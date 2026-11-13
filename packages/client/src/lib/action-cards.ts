@@ -22,7 +22,7 @@ import type { Level } from "./access-levels";
 import { workspaceActionContext, workspaceActionWords } from "./actions";
 import { type AppPage, isAppPage } from "./app-pages";
 import type { ConnectedItem } from "./connected";
-import { isHttpsUrl, serverCovers } from "./custom-tools";
+import { isHttpsUrl, isServerAddress, serverCovers } from "./custom-tools";
 import { formatUsd, joinNames } from "./format";
 import { aiStateOf, PLAN_BRAIN } from "./no-ai";
 import type { Permission } from "./permissions";
@@ -485,7 +485,8 @@ export function actionCardOf(meta: Record<string, unknown> | null | undefined): 
       kind: "connect_app",
       forUserId,
       ...(typeof p.connector === "string" ? { connector: p.connector } : {}),
-      ...(typeof p.url === "string" && isHttpsUrl(p.url) ? { url: p.url } : {}),
+      // An MCP server by address, private or a local one this server runs, is one to connect too.
+      ...(typeof p.url === "string" && isServerAddress(p.url) ? { url: p.url } : {}),
       why,
     };
   }

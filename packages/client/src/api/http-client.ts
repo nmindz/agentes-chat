@@ -145,6 +145,7 @@ import type {
   JoinClaim,
   JoinRequest,
   LearnedSkill,
+  LocalMcpServer,
   Machine,
   MachineAccess,
   MachineAccount,
@@ -1898,6 +1899,8 @@ export function createHttpApi(options: TransportOptions = {}): HttpApi {
     },
     customConnectors: {
       list: async (orgId) => (await request<{ servers: CustomServer[] }>(`${org(orgId)}/connectors/custom`)).servers,
+      localServers: async (orgId) =>
+        (await request<{ servers: LocalMcpServer[] }>(`${org(orgId)}/connectors/local-servers`)).servers,
       connect: (orgId, input) => request<CustomConnectStart>(`${org(orgId)}/connectors/custom`, { json: input }),
       refresh: (orgId, serverId) =>
         request<CustomServer>(`${org(orgId)}/connectors/custom/${enc(serverId)}/refresh`, { json: {} }),

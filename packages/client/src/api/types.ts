@@ -2939,6 +2939,15 @@ export interface CustomTool {
   firstSeenAt: string;
 }
 
+/** An MCP server this server runs itself (stdio), from the operator's file: an admin connects one by its address. */
+export interface LocalMcpServer {
+  name: string;
+  label: string;
+  description?: string;
+  /** `stdio://<name>`. */
+  serverUrl: string;
+}
+
 export interface CustomServer {
   id: string;
   serverUrl: string;
