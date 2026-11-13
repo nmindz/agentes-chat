@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { accessSync, constants, readdirSync, readFileSync } from "node:fs";
+import { accessSync, constants, readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -7,7 +7,7 @@ import { machineSize } from "@agenteschat/adapters/host-stats";
 import type { RunnerInfo, RunnerPhone, RunnerToolchains } from "@agenteschat/adapters/machine-protocol";
 import type { Term } from "@agenteschat/setup/src/term";
 import { TOOL_LABELS } from "./access";
-import { effectiveAccess, readStoredConfig } from "./config";
+import { effectiveAccess, orgHomes, readStoredConfig } from "./config";
 import { shortTime } from "./daemon";
 import { errnoCode } from "./errors";
 import { detectExecutors } from "./executors";
@@ -324,14 +324,7 @@ export function connections(home: string): DoctorConnection[] | null {
   } catch (err) {
     if (errnoCode(err) === "EACCES") return null;
   }
-  const sub = (dir: string) => {
-    try {
-      return readdirSync(dir).map((name) => path.join(dir, name));
-    } catch {
-      return [];
-    }
-  };
-  const homes = [home, ...sub(path.join(home, "orgs")), ...sub(path.join(home, "host", "orgs"))];
+  const homes = [home, ...orgHomes(home)];
   return homes.flatMap((h): DoctorConnection[] => {
     let stored: ReturnType<typeof readStoredConfig>;
     try {

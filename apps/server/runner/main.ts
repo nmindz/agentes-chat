@@ -46,9 +46,11 @@ import {
   effectiveAccess,
   expandHome,
   normalizeServerUrl,
+  orgHomes,
   pairedConfig,
   parseService,
   parseUidRange,
+  type RunnerConfig,
   readConfig,
   readStoredConfig,
   runnerHome,
@@ -152,11 +154,11 @@ Usage:
   agentes-runner computer
       What this computer has, what is free now, and which agents use the most of it (they share it).
       Agents run it before something heavy.
-  agentes-runner folders [list | allow <path> [--agent <handle>]... | remove <path> [--agent <handle>]...]
+  agentes-runner folders [list | allow <path> [--agent <handle>]... | remove <path> [--agent <handle>]...] [--org <id or name>]
       Folders agents may use besides their own (an agent's handle, as on the site).
-  agentes-runner tools [list | enable <tool> | disable <tool>]
+  agentes-runner tools [list | enable <tool> | disable <tool>] [--org <id or name>]
       Turns claude (Claude Code), codex (Codex), commands, browser, desktop or terminal on or off on
-      this computer.
+      this computer. As this server's computer, serving more than one organization: --org says whose.
   agentes-runner services [list | allow <tcp|udp>/<port> | remove <tcp|udp>/<port>]
       System mode: what of this computer's own servers agents may reach besides DNS (an Ollama on
       tcp/11434, say). Each agent always reaches its own local ports, never another agent's.
@@ -886,6 +888,7 @@ function status(): number {
   const home = runnerHome();
   const stored = storedOrNull(home);
   const config = readConfig(home);
+  const orgs = config ? [] : pairedOrgs(home);
   const bun = (process.versions as { bun?: string }).bun;
   // The version worth reporting is the one of the runner serving this home, which keeps in the lock what it puts
   // in its `hello`. This command may be another install's shim: its own constant is only the answer when no runner
@@ -908,14 +911,32 @@ function status(): number {
       `Connected${stored?.orgName ? ` to ${stored.orgName}` : ""} as "${config.name}"`,
       `${config.server} · workspace ${config.workspace}`,
     );
-  } else term.fail("Not connected.");
+  } else if (orgs.length === 0) term.fail("Not connected.");
+  for (const org of orgs) {
+    term.step(
+      `Connected to ${orgLabel(org.stored)} as "${org.config.name}" (this server's computer)`,
+      `${org.config.server} · ${org.home}`,
+    );
+  }
   if (running) term.step(`Running: pid ${running.pid}${running.mode ? ` (${running.mode})` : ""}`);
   else term.warn("Running: no");
   const service = serviceStatus(undefined, stored?.mode === "system");
   // systemd says how the unit is ("(active)", "(inactive)", "(failed)"); launchd and Windows only that it's there.
   if (service && (service.endsWith("(active)") || !service.endsWith(")"))) term.step(`Service: ${service}`);
   else term.warn(service ? `Service: ${service}` : "Service: not installed");
-  printDesktopAndTerminal(term, home, stored ? effectiveAccess(stored).tools : undefined, stored?.mode === "system");
+  if (orgs.length === 0) {
+    printDesktopAndTerminal(term, home, stored ? effectiveAccess(stored).tools : undefined, stored?.mode === "system");
+  }
+  for (const org of orgs) {
+    term.text(orgLabel(org.stored), true);
+    printDesktopAndTerminal(
+      term,
+      org.home,
+      effectiveAccess(org.stored).tools,
+      org.stored.mode === "system",
+      orgs.length > 1 ? ` --org ${org.stored.orgId ?? path.basename(org.home)}` : "",
+    );
+  }
   term.gap();
   term.text(`Config: ${configPath(home)}`, true);
   if (stored) {
@@ -930,7 +951,13 @@ function status(): number {
  * `status`: whether the agents' desktops and the terminal can run here (what `hello` tells the server), and
  * their switches. In system mode root runs them as each agent's own user, so being root is no reason.
  */
-function printDesktopAndTerminal(term: Term, home: string, tools: RunnerTools | undefined, agentUsers: boolean) {
+function printDesktopAndTerminal(
+  term: Term,
+  home: string,
+  tools: RunnerTools | undefined,
+  agentUsers: boolean,
+  orgFlag = "",
+) {
   const log = () => undefined;
   const infos = [
     [
@@ -943,7 +970,7 @@ function printDesktopAndTerminal(term: Term, home: string, tools: RunnerTools | 
   for (const [tool, label, info] of infos) {
     if (!info.available) term.warn(`${label}: unavailable: ${info.reason}`);
     else if (tools?.[tool]) term.step(`${label}: on`);
-    else term.warn(`${label}: off (agentes-runner tools enable ${tool})`);
+    else term.warn(`${label}: off (agentes-runner tools enable ${tool}${orgFlag})`);
   }
   if (!hasBunTerminal() && !runningCompiled() && process.platform !== "win32") {
     term.text(
@@ -953,15 +980,49 @@ function printDesktopAndTerminal(term: Term, home: string, tools: RunnerTools | 
   }
 }
 
-/** For `folders` and `tools`: the paired config, or a message. */
-function pairedOrExit(home: string) {
+/** One paired home: the top-level one, or an organization's on this server's computer. */
+interface PairedHome {
+  home: string;
+  stored: StoredConfig;
+  config: RunnerConfig;
+}
+
+function pairedAt(home: string): PairedHome | null {
   const stored = storedOrNull(home);
   const config = stored ? pairedConfig(stored, configPath(home)) : null;
-  if (!config || !stored) {
+  return stored && config ? { home, stored, config } : null;
+}
+
+/** The organizations this computer serves as the server's own (or the agentes app's): their paired homes. */
+function pairedOrgs(home: string): PairedHome[] {
+  return orgHomes(home).flatMap((h) => pairedAt(h) ?? []);
+}
+
+const orgLabel = (stored: StoredConfig) => stored.orgName || stored.orgId || "an organization";
+
+/**
+ * For `folders` and `tools`: the paired home, or a message. On the server's computer each organization has its own
+ * home: the only one, or the one `--org <id or name>` names.
+ */
+function pairedOrExit(home: string, p: Parsed): PairedHome | null {
+  const own = pairedAt(home);
+  if (own) return own;
+  const orgs = pairedOrgs(home);
+  if (orgs.length === 0) {
     console.error("This computer isn't connected yet. Run: agentes-runner pair --server <url>");
     return null;
   }
-  return { stored, config };
+  const want = flagString(p, "org");
+  const lower = want?.toLowerCase();
+  const picked = want ? orgs.filter((o) => o.stored.orgId === want || o.stored.orgName?.toLowerCase() === lower) : orgs;
+  if (picked.length === 1) return picked[0] as PairedHome;
+  const known = orgs.map((o) => `${orgLabel(o.stored)} (${o.stored.orgId ?? path.basename(o.home)})`).join(", ");
+  console.error(
+    want && picked.length === 0
+      ? `This computer doesn't serve an organization "${want}". It serves: ${known}`
+      : `This computer serves ${orgs.length} organizations: choose one with --org <id or name>. It serves: ${known}`,
+  );
+  return null;
 }
 
 function saveAccess(home: string, access: ReturnType<typeof effectiveAccess>) {
@@ -974,9 +1035,9 @@ const unknownAgent = (given: string, agents: ReturnType<typeof readAgents>) =>
 
 /** `agentes-runner folders …`: the same config the app edits (a running runner applies it at once). */
 function folders(p: Parsed): number {
-  const home = runnerHome();
-  const paired = pairedOrExit(home);
+  const paired = pairedOrExit(runnerHome(), p);
   if (!paired) return 1;
+  const { home } = paired;
   const [, sub = "list", target] = p.positional;
   const access = effectiveAccess(paired.stored);
   const agents = readAgents(home);
@@ -1060,9 +1121,9 @@ function safeReal(p: string) {
 
 /** `agentes-runner tools …`. */
 function tools(p: Parsed): number {
-  const home = runnerHome();
-  const paired = pairedOrExit(home);
+  const paired = pairedOrExit(runnerHome(), p);
   if (!paired) return 1;
+  const { home } = paired;
   const [, sub = "list", tool] = p.positional;
   const access = effectiveAccess(paired.stored);
   if (sub === "list") {

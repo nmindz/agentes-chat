@@ -1,4 +1,14 @@
-import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, watch, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  statSync,
+  watch,
+  writeFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { SYSTEM_RUNNER_HOME } from "@agenteschat/adapters/command-policy";
@@ -123,6 +133,20 @@ export function runnerHome(env: NodeJS.ProcessEnv = process.env): string {
 
 export function configPath(home = runnerHome()) {
   return path.join(home, "config.json");
+}
+
+/** The organizations' homes kept under `home`: the server's computer and the agentes app (`orgs/*`, `host/orgs/*`). */
+export function orgHomes(home = runnerHome()): string[] {
+  const sub = (dir: string) => {
+    try {
+      return readdirSync(dir)
+        .sort()
+        .map((name) => path.join(dir, name));
+    } catch {
+      return [];
+    }
+  };
+  return [...sub(path.join(home, "orgs")), ...sub(path.join(home, "host", "orgs"))];
 }
 
 /** Expands a leading `~` and makes the path absolute. */
