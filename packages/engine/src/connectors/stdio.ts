@@ -33,7 +33,7 @@ export function stdioNameOf(serverUrl: string): string | null {
   }
 }
 
-const NAME = /^[a-z0-9][a-z0-9_-]{0,63}$/i;
+export const STDIO_NAME = /^[a-z0-9][a-z0-9_-]{0,63}$/i;
 
 interface StdioFile {
   mcpServers?: unknown;
@@ -57,7 +57,7 @@ export function parseStdioServers(text: string): StdioServer[] {
     throw new Error('MCP_STDIO_SERVERS: the file needs an "mcpServers" object');
   const out: StdioServer[] = [];
   for (const [name, raw] of Object.entries(listed as Record<string, unknown>)) {
-    if (!NAME.test(name)) throw new Error(`MCP_STDIO_SERVERS: "${name}" isn't a name (letters, digits, - and _)`);
+    if (!STDIO_NAME.test(name)) throw new Error(`MCP_STDIO_SERVERS: "${name}" isn't a name (letters, digits, - and _)`);
     if (!raw || typeof raw !== "object" || Array.isArray(raw))
       throw new Error(`MCP_STDIO_SERVERS: "${name}" needs an object`);
     const e = raw as Record<string, unknown>;
@@ -88,23 +88,32 @@ export function parseStdioServers(text: string): StdioServer[] {
 }
 
 let registered: StdioServer[] = [];
+let stored: StdioServer[] = [];
 
-/** The operator's list, in place for this process (an empty list removes every server). */
+/** The operator's file, in place for this process (an empty list removes every server). */
 export function setStdioServers(servers: StdioServer[]) {
   registered = servers;
 }
 
-/** The servers of the operator's file, all of them (admins of a workspace see the ones it may connect). */
-export const stdioServers = () => registered;
+/** The servers the owner added in Settings (`MCP_STDIO_EDITABLE`), in place for this process. */
+export function setStoredStdioServers(servers: StdioServer[]) {
+  stored = servers;
+}
+
+/** The operator's file alone. */
+export const stdioFileServers = () => registered;
+
+/** Every server this one runs: the file's, then the ones added in Settings (a name in the file wins). */
+export const stdioServers = () => [...registered, ...stored.filter((s) => !registered.some((r) => r.name === s.name))];
 
 /** The servers one workspace may connect: the ones naming it, and the ones that name no workspace. */
-export const stdioServersFor = (orgId: string) => registered.filter((s) => !s.orgs || s.orgs.includes(orgId));
+export const stdioServersFor = (orgId: string) => stdioServers().filter((s) => !s.orgs || s.orgs.includes(orgId));
 
-/** The server a workspace's connection names, or null when the operator's file doesn't offer it to that workspace. */
+/** The server a workspace's connection names, or null when this server doesn't offer it to that workspace. */
 export function stdioServerFor(orgId: string, serverUrl: string): StdioServer | null {
   const name = stdioNameOf(serverUrl);
   if (!name) return null;
-  const server = registered.find((s) => s.name === name);
+  const server = stdioServers().find((s) => s.name === name);
   return server && (!server.orgs || server.orgs.includes(orgId)) ? server : null;
 }
 
@@ -122,14 +131,57 @@ export function loadStdioServers(path: string): StdioServer[] {
  * runs (`stdioPool`).
  */
 export function connectOverStdio(server: StdioServer): Promise<McpSession> {
-  const transport = new StdioClientTransport({
+  return mcpSessionOver(stdioTransport(server, "ignore"));
+}
+
+const stdioTransport = (server: StdioServer, stderr: "ignore" | "pipe") =>
+  new StdioClientTransport({
     command: server.command,
     args: server.args,
     env: { ...getDefaultEnvironment(), ...server.env },
     ...(server.cwd ? { cwd: server.cwd } : {}),
-    stderr: "ignore",
+    stderr,
   });
-  return mcpSessionOver(transport);
+
+export type StdioTestResult =
+  | { ok: true; tools: { name: string; description: string | null }[] }
+  | { ok: false; reason: "not_found" | "failed" | "timeout"; detail: string };
+
+/** How much of what the command wrote to stderr a failed test shows. */
+const STDERR_TAIL = 2000;
+
+/**
+ * Starts the server once, outside the pool, and lists its tools: what an owner sees before a workspace connects it.
+ * A command that doesn't start, exits or doesn't answer in `timeoutMs` says why, with the end of its stderr.
+ */
+export async function testStdioServer(server: StdioServer, timeoutMs = 30_000): Promise<StdioTestResult> {
+  const transport = stdioTransport(server, "pipe");
+  let stderr = "";
+  transport.stderr?.on("data", (chunk: Buffer) => {
+    stderr = (stderr + chunk.toString("utf8")).slice(-STDERR_TAIL);
+  });
+  const timeout = Promise.withResolvers<"timeout">();
+  const timer = setTimeout(() => timeout.resolve("timeout"), timeoutMs);
+  let session: McpSession | null = null;
+  const listing = (async () => {
+    session = await mcpSessionOver(transport);
+    return session.listTools();
+  })();
+  try {
+    const listed = await Promise.race([listing, timeout.promise]);
+    if (listed === "timeout") return { ok: false, reason: "timeout", detail: stderr.trim() };
+    return { ok: true, tools: listed.map((t) => ({ name: t.name, description: t.description ?? null })) };
+  } catch (error) {
+    const said = error instanceof Error ? error.message : String(error);
+    const missing = (error as { code?: unknown }).code === "ENOENT" || /\bENOENT\b/.test(said);
+    const detail = [said, stderr.trim()].filter(Boolean).join("\n");
+    return { ok: false, reason: missing ? "not_found" : "failed", detail };
+  } finally {
+    clearTimeout(timer);
+    listing.catch(() => {});
+    const open = session as McpSession | null;
+    await (open ? open.close() : transport.close()).catch(() => {});
+  }
 }
 
 interface PoolEntry {
@@ -190,6 +242,25 @@ export class StdioPool {
     clearInterval(this.timer);
     this.timer = undefined;
     await Promise.all(entries.map((e) => e.session.then((s) => s.close()).catch(() => {})));
+  }
+
+  /** Closes every workspace's session with one server (changed or removed): the next call starts it again. */
+  async closeServer(name: string): Promise<void> {
+    const gone: PoolEntry[] = [];
+    for (const [key, entry] of this.open) {
+      if (key.slice(key.indexOf("|") + 1) !== name) continue;
+      this.open.delete(key);
+      gone.push(entry);
+    }
+    // A call already running ends on the old process; nothing new queues on it.
+    await Promise.all(
+      gone.map((e) =>
+        e.queue
+          .then(() => e.session)
+          .then((s) => s.close())
+          .catch(() => {}),
+      ),
+    );
   }
 
   private entry(orgId: string, server: StdioServer): PoolEntry {

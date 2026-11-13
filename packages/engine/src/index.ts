@@ -81,6 +81,7 @@ export * from "./connectors/presets";
 export * from "./connectors/request-headers";
 export * from "./connectors/server-icon";
 export * from "./connectors/stdio";
+export * from "./connectors/stdio-settings";
 export * from "./consultations";
 export * from "./context";
 export * from "./context/backfill";
