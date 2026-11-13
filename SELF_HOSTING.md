@@ -1149,7 +1149,7 @@ without an OAuth app) or the GitHub App.
 `https://` ones: every request is checked and pinned to a public address, at the connection and again at
 each message.
 
-Two operator switches open the rest, both off unless you set them:
+Three operator switches open the rest, all off unless you set them:
 
 - **`MCP_PRIVATE_SERVERS=true`** lets a workspace connect servers on this machine's own network, over
   `http://` or `https://`: a gateway, an MCP proxy, something on `127.0.0.1:3000`, an Ollama-like server
@@ -1170,8 +1170,31 @@ Two operator switches open the rest, both off unless you set them:
 
   Each one appears in that dialog as a button, and its address is `stdio://<name>`. `orgs` limits it to
   the workspaces listed (unset: every workspace on this server). The command runs as the server's own
-  user, so only this file adds one: no workspace can type a command. A file that isn't valid is logged
-  at boot and no local server is offered until it is fixed.
+  user: no workspace can type a command. A file that isn't valid is logged at boot and no server of the
+  file is offered until it is fixed.
+- **`MCP_STDIO_EDITABLE=true`** lets the server's owner (its first account) do the same in **Settings →
+  Connectors → MCP servers this server runs**: add, change and remove servers with their command,
+  arguments, working folder, variables and workspaces, and **Test** one (it starts once and lists its
+  tools, or says why it didn't start). Variables are sealed with `AGENTES_SECRET` like AI keys and never
+  shown again, only their names; leave one empty when editing to keep it. Every process picks a change up
+  at once, and a changed server's processes restart at its next call. A name in `MCP_STDIO_SERVERS` wins
+  and shows there read-only. Changes are in every workspace's audit log. Without the switch the card only
+  lists the file's servers. Anyone who gets into the owner's account can run commands on this machine
+  with it on: turn it on only where that account is well kept (a strong password, a passkey).
+
+The official image runs as user `bun` and has `bun`/`bunx`, but not `node`, `npx`, `python` or `uvx`. A
+server published for `npx -y some-mcp` usually runs as `bunx some-mcp`; for others, build on the image:
+
+```dockerfile
+FROM ghcr.io/agentes-chat/agentes:latest
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends nodejs npm python3 pipx \
+  && rm -rf /var/lib/apt/lists/*
+USER bun
+```
+
+and point `AGENTES_IMAGE` at it. A server installed outside the image (a binary in a mounted volume) is
+named by its full path.
 
 Whichever the kind, a server's tools are listed, classified (read, write, or approval) and audited the
 same way, and sensitive ones ask a person before they run. A local server keeps its process open between
