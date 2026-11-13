@@ -30,6 +30,7 @@ import {
   createFakeScheduleReader,
   createGifKey,
   createLocalKeyWrapper,
+  createStdioSettings,
   drainOutbox,
   type EmailArt,
   type FakeScheduleAnswers,
@@ -190,6 +191,15 @@ export async function createTestServer(
     jevFetch: options.jevFetch,
     routerQuietMs: 0,
   });
+  // The MCP servers this server runs, as `start.ts` makes them (`MCP_STDIO_EDITABLE`).
+  const mcpServers = createStdioSettings({
+    db,
+    keyWrapper,
+    keyWrappers: [keyWrapper],
+    editable: config.MCP_STDIO_EDITABLE === true,
+    pubsub: adapters.pubsub,
+  });
+  const stopMcpServers = await mcpServers.start();
   // As at boot: the saved Jev and GIPHY keys and GitHub App are read before anything serves.
   await engine.jevKey.ready();
   await gifKey.ready();
@@ -235,6 +245,7 @@ export async function createTestServer(
         streams: engine.streams,
         jevKey: engine.jevKey,
         gifKey,
+        mcpServers,
         githubApp: engine.githubApp,
         speech: engine.speech,
         voice: engine.voice,
@@ -255,6 +266,7 @@ export async function createTestServer(
   return {
     db,
     close: async () => {
+      stopMcpServers();
       await engine.machineHub.stop();
       engine.streams.stop();
       await close();

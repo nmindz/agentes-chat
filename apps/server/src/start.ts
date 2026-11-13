@@ -56,6 +56,7 @@ import {
   composioUsageHook,
   createGifKey,
   createLocalKeyWrapper,
+  createStdioSettings,
   defaultEmailFrom,
   drainLocalRuns,
   EMAIL_PICTURES,
@@ -385,6 +386,17 @@ async function boot(
       setStdioServers([]);
     }
   }
+  // And the ones its owner adds in Settings (`MCP_STDIO_EDITABLE`, never on agentes.chat Cloud), read again when any
+  // process changes them.
+  const mcpServers = createStdioSettings({
+    db: database.db,
+    keyWrapper: adapters.keyWrapper,
+    keyWrappers: [adapters.keyWrapper, ...adapters.legacyKeyWrappers],
+    editable: config.MCP_STDIO_EDITABLE === true && !isAgentesCloud(config.PUBLIC_URL),
+    pubsub: adapters.pubsub,
+    log: (message) => log.warn(message),
+  });
+  await mcpServers.start();
   // Per-process caches for agent/org/channel config, scopes, connections, credential rows (30 s TTL).
   enableCaches();
   // A write in any process (the app, a worker) clears what every process cached of it.
@@ -563,6 +575,7 @@ async function boot(
         router: engine.router,
         jevKey: engine.jevKey,
         gifKey: gifKey ?? undefined,
+        mcpServers,
         githubApp: engine.githubApp,
         speech: engine.speech,
         voice: engine.voice,
