@@ -57,6 +57,50 @@ export interface GifKey {
   state: "off" | "ok" | "invalid";
 }
 
+/**
+ * An MCP server this server runs as a local process (stdio), for its pinned owner on a server that isn't agentes.chat's
+ * own (`GET /api/app/mcp-servers`): from the server's file (`MCP_STDIO_SERVERS`) or added in Settings
+ * (`MCP_STDIO_EDITABLE`). A workspace's admins connect one by its `stdio://` address.
+ */
+export interface InstanceMcpServer {
+  name: string;
+  address: string;
+  label: string;
+  description: string | null;
+  command: string;
+  args: string[];
+  cwd: string | null;
+  /** Workspace ids; null: every workspace here. */
+  orgs: string[] | null;
+  /** The variables' names; their values never leave the server. */
+  env: string[];
+  source: "env" | "settings";
+  /** `invalid`: its variables don't open on this server (another `AGENTES_SECRET`), so it isn't offered. */
+  state: "ok" | "invalid";
+  updatedAt: string | null;
+}
+
+export interface InstanceMcpServers {
+  /** Whether servers may be added in Settings (`MCP_STDIO_EDITABLE`). */
+  editable: boolean;
+  servers: InstanceMcpServer[];
+}
+
+export interface InstanceMcpServerDraft {
+  label?: string | null;
+  description?: string | null;
+  command: string;
+  args: string[];
+  cwd?: string | null;
+  orgs: string[] | null;
+  /** A variable without a value keeps the one already saved. */
+  env: { name: string; value?: string }[];
+}
+
+export type InstanceMcpServerTest =
+  | { ok: true; tools: { name: string; description: string | null }[] }
+  | { ok: false; reason: "not_found" | "failed" | "timeout"; detail: string };
+
 /** Who can turn voice into text on this server (ADR 0100). */
 export type SpeechProvider = "assemblyai" | "elevenlabs" | "soniox" | "groq" | "openai" | "local" | "deepinfra";
 

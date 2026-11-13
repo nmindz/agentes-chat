@@ -128,6 +128,7 @@ import type {
   GifCategory,
   GifKey,
   InstallableCli,
+  InstanceMcpServerDraft,
   InviteBatch,
   InviteLinkChoices,
   Issue,
@@ -388,6 +389,37 @@ function useGifKeyChange<T>(change: (api: ApiClient, input: T) => Promise<GifKey
 }
 export const useSaveGifKey = () => useGifKeyChange((api, apiKey: string) => api.system.saveGifKey(apiKey), true);
 export const useRemoveGifKey = () => useGifKeyChange<void>((api) => api.system.removeGifKey());
+
+/** The MCP servers this server runs (stdio): `null` for everyone but its owner on a self-hosted server. */
+export const useMcpServers = () => {
+  const api = useApi();
+  return useQuery({ queryKey: keys.mcpServers, queryFn: () => api.system.mcpServers() });
+};
+
+/** A change to the list: it and every workspace's local servers (what admins may connect) are read again. */
+function useMcpServerChange<T, R>(change: (api: ApiClient, input: T) => Promise<R>) {
+  const api = useApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: T) => change(api, input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: keys.mcpServers });
+      void qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === "org" && q.queryKey[2] === "local-mcp-servers" });
+    },
+    // A refused draft is said in its dialog.
+    meta: { silent: true },
+  });
+}
+export const useSaveMcpServer = () =>
+  useMcpServerChange((api, input: { name: string; draft: InstanceMcpServerDraft }) =>
+    api.system.saveMcpServer(input.name, input.draft),
+  );
+export const useRemoveMcpServer = () => useMcpServerChange((api, name: string) => api.system.removeMcpServer(name));
+/** Starts it once: its tools, or why it didn't start. */
+export const useTestMcpServer = () => {
+  const api = useApi();
+  return useMutation({ mutationFn: (name: string) => api.system.testMcpServer(name), meta: { silent: true } });
+};
 
 /** The installation's speech engine (ADR 0100): `null` for everyone but its owner on a self-hosted server. */
 export const useSpeechKey = () => {

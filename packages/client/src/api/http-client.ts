@@ -125,6 +125,9 @@ import type {
   ImportedSource,
   ImportPlan,
   Instance,
+  InstanceMcpServer,
+  InstanceMcpServers,
+  InstanceMcpServerTest,
   Invitation,
   InvitationPreview,
   InvitationState,
@@ -600,6 +603,12 @@ export function createHttpApi(options: TransportOptions = {}): HttpApi {
       gifKey: () => nullOn(404, () => request<GifKey>("/api/app/gif-key")),
       saveGifKey: (apiKey) => request<GifKey>("/api/app/gif-key", { method: "PUT", json: { apiKey } }),
       removeGifKey: () => request<GifKey>("/api/app/gif-key", { method: "DELETE" }),
+      mcpServers: () => nullOn(404, () => request<InstanceMcpServers>("/api/app/mcp-servers")),
+      saveMcpServer: (name, draft) =>
+        request<InstanceMcpServer>(`/api/app/mcp-servers/${enc(name)}`, { method: "PUT", json: draft }),
+      removeMcpServer: (name) => request<void>(`/api/app/mcp-servers/${enc(name)}`, { method: "DELETE" }),
+      testMcpServer: (name) =>
+        request<InstanceMcpServerTest>(`/api/app/mcp-servers/${enc(name)}/test`, { method: "POST", json: {} }),
       speechKey: () => nullOn(404, () => request<SpeechKey>("/api/app/speech-key")),
       saveSpeechKey: (input) => request<SpeechKey>("/api/app/speech-key", { method: "PUT", json: input }),
       removeSpeechKey: () => request<SpeechKey>("/api/app/speech-key", { method: "DELETE" }),

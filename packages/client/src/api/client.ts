@@ -167,6 +167,10 @@ import type {
   ImportPlan,
   InstallableCli,
   Instance,
+  InstanceMcpServer,
+  InstanceMcpServerDraft,
+  InstanceMcpServers,
+  InstanceMcpServerTest,
   Invitation,
   InvitationPreview,
   InvitationState,
@@ -411,6 +415,12 @@ export interface ApiClient {
     /** Checked with GIPHY first: `gif_key_invalid` (422) when it refuses, `gif_key_env` (409) with an env key. */
     saveGifKey(apiKey: string): Promise<GifKey>;
     removeGifKey(): Promise<GifKey>;
+    /** The MCP servers this server runs (stdio): `null` unless I am the installation's owner on a self-hosted server. */
+    mcpServers(): Promise<InstanceMcpServers | null>;
+    /** 409 `mcp_server_not_editable` without `MCP_STDIO_EDITABLE`, `mcp_server_env` for a name in the server's file. */
+    saveMcpServer(name: string, draft: InstanceMcpServerDraft): Promise<InstanceMcpServer>;
+    removeMcpServer(name: string): Promise<void>;
+    testMcpServer(name: string): Promise<InstanceMcpServerTest>;
     /** The speech engine (ADR 0100): `null` unless I am the installation's owner on a self-hosted server. */
     speechKey(): Promise<SpeechKey | null>;
     /** Tried with the provider first: `speech_key_invalid` (422) when it refuses. */
